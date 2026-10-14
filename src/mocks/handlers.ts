@@ -1,5 +1,5 @@
 import { http, HttpResponse, delay } from 'msw'
-import type { ApiError, CreateOrderBody, NftListResponse, Order } from '@/types/api'
+import type { ApiError, CreateOrderBody, Nft, NftFacets, NftListResponse, Order } from '@/types/api'
 import { db, ready, saveCarts, saveNfts, saveOrders, saveSessions, sha256, type StoredOrder } from './db'
 import { emitNftUpdated, emitOrderUpdated } from './realtime'
 
@@ -209,6 +209,46 @@ export const handlers = [
       page,
       pageSize,
       totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    }
+    return HttpResponse.json(body)
+  }),
+
+  // contagens para a sidebar de filtros: cada faceta ignora o próprio filtro (coleção não filtra por coleção, rede não filtra por rede)
+  http.get('/api/nfts/facets', async ({ request }) => {
+    await ready
+    await delay(200)
+    const p = new URL(request.url).searchParams
+    const q = (p.get('q') ?? '').trim().toLowerCase()
+    const collections = p.getAll('collection')
+    const networks = p.getAll('network')
+    const minPrice = p.get('minPrice')
+    const maxPrice = p.get('maxPrice')
+    const tab = p.get('tab') ?? 'all'
+
+    const matchesCommon = (n: Nft) =>
+      (!q || n.name.toLowerCase().includes(q)) &&
+      (!isEth(minPrice) || toUnits(n.price) >= toUnits(minPrice)) &&
+      (!isEth(maxPrice) || toUnits(n.price) <= toUnits(maxPrice)) &&
+      (tab === 'all' || n.tag === tab)
+
+    const count = (items: Nft[], key: 'collection' | 'network') => {
+      const out: Record<string, number> = {}
+      for (const n of items) out[n[key]] = (out[n[key]] ?? 0) + 1
+      return out
+    }
+
+    const forCollections = db.nfts.filter((n) => matchesCommon(n) && (!networks.length || networks.includes(n.network)))
+    const forNetworks = db.nfts.filter((n) => matchesCommon(n) && (!collections.length || collections.includes(n.collection)))
+
+    const prices = db.nfts.map((n) => toUnits(n.price))
+    const priceBounds = prices.length
+      ? { min: formatUnits(prices.reduce((a, b) => (b < a ? b : a))), max: formatUnits(prices.reduce((a, b) => (b > a ? b : a))) }
+      : { min: '0', max: '0' }
+
+    const body: NftFacets = {
+      collections: count(forCollections, 'collection'),
+      networks: count(forNetworks, 'network'),
+      priceBounds,
     }
     return HttpResponse.json(body)
   }),

@@ -1,7 +1,7 @@
 import type { Nft, Network, Wallet } from '@/types/api'
 
 const names = ['Emerald Ape', 'Sage Nomad', 'Neon Vessel', 'Cosmic Bloom', 'Violet Nomad', 'Ivory Baron', 'Golden Beat', 'Golden Signal']
-const collections = ['arte-digital', 'fotografia', 'musica', 'arte-3d', 'colecionaveis', 'generativa', 'jogos', 'avatares', 'utilidade']
+const collections = ['arte-digital', 'fotografia', 'musica', 'arte-3d', 'colecionaveis', 'generativa', 'jogos', 'assinaturas', 'utilidade']
 const networks: Network[] = ['ethereum', 'polygon', 'solana']
 
 export const seedNfts: Nft[] = Array.from({ length: 24 }, (_, i) => ({

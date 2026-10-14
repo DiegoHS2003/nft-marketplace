@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as CarrinhoRouteImport } from './routes/carrinho'
+import { Route as ForaDoEscopoRouteImport } from './routes/fora-do-escopo'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthContaRouteImport } from './routes/_auth/conta'
 import { Route as AuthPagamentoRouteImport } from './routes/_auth/pagamento'
@@ -30,6 +31,11 @@ const AuthRoute = AuthRouteImport.update({
 const CarrinhoRoute = CarrinhoRouteImport.update({
   id: '/carrinho',
   path: '/carrinho',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForaDoEscopoRoute = ForaDoEscopoRouteImport.update({
+  id: '/fora-do-escopo',
+  path: '/fora-do-escopo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -61,6 +67,7 @@ const AuthPedidoIdRoute = AuthPedidoIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/carrinho': typeof CarrinhoRoute
+  '/fora-do-escopo': typeof ForaDoEscopoRoute
   '/login': typeof LoginRoute
   '/conta': typeof AuthContaRoute
   '/pagamento': typeof AuthPagamentoRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/carrinho': typeof CarrinhoRoute
+  '/fora-do-escopo': typeof ForaDoEscopoRoute
   '/login': typeof LoginRoute
   '/conta': typeof AuthContaRoute
   '/pagamento': typeof AuthPagamentoRoute
@@ -81,6 +89,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_auth': typeof AuthRouteWithChildren
   '/carrinho': typeof CarrinhoRoute
+  '/fora-do-escopo': typeof ForaDoEscopoRoute
   '/login': typeof LoginRoute
   '/_auth/conta': typeof AuthContaRoute
   '/_auth/pagamento': typeof AuthPagamentoRoute
@@ -92,6 +101,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/carrinho'
+    | '/fora-do-escopo'
     | '/login'
     | '/conta'
     | '/pagamento'
@@ -101,6 +111,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/carrinho'
+    | '/fora-do-escopo'
     | '/login'
     | '/conta'
     | '/pagamento'
@@ -111,6 +122,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_auth'
     | '/carrinho'
+    | '/fora-do-escopo'
     | '/login'
     | '/_auth/conta'
     | '/_auth/pagamento'
@@ -122,6 +134,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   CarrinhoRoute: typeof CarrinhoRoute
+  ForaDoEscopoRoute: typeof ForaDoEscopoRoute
   LoginRoute: typeof LoginRoute
   NftsIdRoute: typeof NftsIdRoute
 }
@@ -147,6 +160,13 @@ declare module '@tanstack/react-router' {
       path: '/carrinho'
       fullPath: '/carrinho'
       preLoaderRoute: typeof CarrinhoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fora-do-escopo': {
+      id: '/fora-do-escopo'
+      path: '/fora-do-escopo'
+      fullPath: '/fora-do-escopo'
+      preLoaderRoute: typeof ForaDoEscopoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -205,6 +225,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   CarrinhoRoute: CarrinhoRoute,
+  ForaDoEscopoRoute: ForaDoEscopoRoute,
   LoginRoute: LoginRoute,
   NftsIdRoute: NftsIdRoute,
 }

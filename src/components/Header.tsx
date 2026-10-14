@@ -1,11 +1,56 @@
-import { Link, useRouter } from '@tanstack/react-router'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate, useRouter } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { LogIn, ShoppingCart } from 'lucide-react'
+import { LogIn, Search, ShoppingCart } from 'lucide-react'
 import { logout } from '@/api/auth'
 import { useCart } from '@/api/cart'
 import { endSession, useUser } from '@/lib/auth'
 
 const OUT_OF_SCOPE = ['Mercado', 'Criadores', 'Aprenda']
+
+function HeaderSearch() {
+  const [open, setOpen] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (open) inputRef.current?.focus()
+  }, [open])
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} aria-label="Abrir busca" className="p-1">
+        <Search aria-hidden="true" className="size-5" />
+      </button>
+    )
+  }
+
+  return (
+    <form
+      role="search"
+      onSubmit={(e) => {
+        e.preventDefault()
+        const value = (new FormData(e.currentTarget).get('q') as string).trim()
+        navigate({ to: '/', search: { q: value || undefined } })
+        setOpen(false)
+      }}
+      className="flex items-center gap-1"
+    >
+      <label htmlFor="header-search" className="sr-only">Buscar NFT</label>
+      <input
+        id="header-search"
+        ref={inputRef}
+        name="q"
+        placeholder="Buscar NFT"
+        onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
+        className="w-32 rounded border border-kurio-border bg-kurio-ink-soft px-2 py-1 text-sm transition-[width] duration-200 motion-reduce:transition-none sm:w-48"
+      />
+      <button type="submit" aria-label="Buscar" className="p-1">
+        <Search aria-hidden="true" className="size-4" />
+      </button>
+    </form>
+  )
+}
 
 export function Header() {
   const user = useUser()
@@ -31,18 +76,22 @@ export function Header() {
         <nav aria-label="Principal" className="hidden items-center gap-6 text-sm md:flex">
           <Link to="/" className="border-b-2 border-kurio-primary pb-1 text-kurio-primary">Início</Link>
           {OUT_OF_SCOPE.map((label) => (
-            <span
+            <Link
               key={label}
-              aria-disabled="true"
-              title="Fora do escopo do desafio"
-              className="cursor-not-allowed text-kurio-text-secondary opacity-60"
+              to="/fora-do-escopo"
+              search={{ secao: label }}
+              className="text-kurio-text-secondary hover:text-kurio-text"
             >
               {label}
-            </span>
+            </Link>
           ))}
         </nav>
 
         <div className="ml-auto flex items-center gap-3 text-sm sm:gap-4">
+          <div className="hidden md:block">
+            <HeaderSearch />
+          </div>
+
           <Link
             to="/carrinho"
             aria-label={`Carrinho, ${count} ${count === 1 ? 'item' : 'itens'}`}

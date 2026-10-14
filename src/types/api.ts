@@ -22,6 +22,12 @@ export interface NftListResponse {
   totalPages: number
 }
 
+export interface NftFacets {
+  collections: Record<string, number>
+  networks: Record<string, number>
+  priceBounds: { min: string; max: string }
+}
+
 export interface User {
   id: string
   name: string

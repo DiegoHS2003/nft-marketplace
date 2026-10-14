@@ -1,4 +1,16 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
+
+// no desktop a busca fica atrás de uma lupa no header (precisa abrir); no mobile já vem visível no topo da Início
+async function search(page: Page, term: string) {
+  // espera a hidratação terminar antes de checar se a lupa está visível, senão a checagem corre antes do React montar
+  await expect(page.getByRole('button', { name: 'Todos os NFTs' })).toBeVisible()
+  const openButton = page.getByRole('button', { name: 'Abrir busca' })
+  if (await openButton.isVisible()) await openButton.click()
+  // no desktop a lupa do header e a barra do mobile convivem no DOM; só uma fica visível por vez
+  const field = page.getByLabel('Buscar NFT').and(page.locator(':visible'))
+  await field.fill(term)
+  await field.press('Enter')
+}
 
 test('ordenação e paginação ficam na URL e sobrevivem ao histórico', async ({ page }) => {
   await page.goto('/')
@@ -22,14 +34,12 @@ test('ordenação e paginação ficam na URL e sobrevivem ao histórico', async 
 
 test('busca por nome e resultado vazio', async ({ page }) => {
   await page.goto('/')
-  await page.getByLabel('Buscar NFT').fill('Ape')
-  await page.getByRole('button', { name: 'Buscar' }).click()
+  await search(page, 'Ape')
   await expect(page).toHaveURL(/q=Ape/)
   await expect(page.getByRole('link', { name: /Emerald Ape/ }).first()).toBeVisible()
   await expect(page.getByRole('link', { name: /Sage Nomad/ })).toHaveCount(0)
 
-  await page.getByLabel('Buscar NFT').fill('zzzz')
-  await page.getByRole('button', { name: 'Buscar' }).click()
+  await search(page, 'zzzz')
   await expect(page.getByText('Nenhum NFT encontrado.')).toBeVisible()
 })
 

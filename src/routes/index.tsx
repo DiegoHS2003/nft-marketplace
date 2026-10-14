@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { SlidersHorizontal } from 'lucide-react'
+import { Search, SlidersHorizontal } from 'lucide-react'
 import { fetchNfts, type NftSearch } from '@/api/nfts'
 import { CatalogFilters } from '@/components/CatalogFilters'
+import { HeroCarousel } from '@/components/HeroCarousel'
 
 const SORTS = ['recent', 'price_asc', 'price_desc'] as const
 const TABS = [
@@ -62,44 +63,46 @@ function Home() {
 
   return (
     <main>
-      <section className="border-b border-kurio-border bg-kurio-ink-soft">
-        <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 py-10 sm:px-6 md:grid-cols-2">
-          <div>
-            <p className="text-sm text-kurio-text-accent">Bem-vindo à Kurio</p>
-            <h1 className="mt-3 text-3xl font-bold uppercase leading-tight text-kurio-foreground sm:text-4xl lg:text-5xl">
-              Seja dono do futuro da arte digital
-            </h1>
-            <p className="mt-4 max-w-md text-sm text-kurio-text-secondary">
-              Descubra NFTs selecionados de criadores emergentes e consagrados. Colecione arte digital rara,
-              apoie artistas e tenha uma parte da cultura do amanhã.
-            </p>
-            <a
-              href="#catalogo"
-              className="mt-6 inline-block rounded bg-kurio-primary px-5 py-2 text-sm font-bold uppercase text-kurio-ink hover:bg-kurio-primary-light"
-            >
-              Explorar
-            </a>
+      <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 pt-4 md:hidden">
+        <form
+          key={q ?? ''}
+          role="search"
+          onSubmit={(e) => {
+            e.preventDefault()
+            const value = new FormData(e.currentTarget).get('q') as string
+            update({ q: value.trim() || undefined })
+          }}
+          className="flex-1"
+        >
+          <label htmlFor="mobile-search" className="sr-only">Buscar NFT</label>
+          <div className="flex items-center gap-2 rounded-xl border border-kurio-border bg-kurio-ink-soft px-3 py-2">
+            <Search aria-hidden="true" className="size-4 shrink-0 text-kurio-text-secondary" />
+            <input
+              id="mobile-search"
+              name="q"
+              defaultValue={q}
+              placeholder="Explorar coleções"
+              className="w-full bg-transparent text-sm outline-none placeholder:text-kurio-text-secondary"
+            />
           </div>
-          <img
-            src="/nfts/macaco-1.png"
-            alt="Macaco de óculos e jaqueta verde, NFT em destaque"
-            className="aspect-square w-full max-w-md justify-self-center rounded-2xl object-cover md:justify-self-end"
-          />
-        </div>
-      </section>
+          <button type="submit" className="sr-only">Buscar</button>
+        </form>
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((open) => !open)}
+          aria-expanded={filtersOpen}
+          aria-controls="catalog-filters"
+          aria-label="Filtros"
+          className="shrink-0 rounded-xl border border-kurio-border bg-kurio-ink-soft p-2.5"
+        >
+          <SlidersHorizontal aria-hidden="true" className="size-4" />
+        </button>
+      </div>
+
+      <HeroCarousel />
 
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 md:grid-cols-[240px_1fr]">
         <aside aria-label="Filtros">
-          <button
-            type="button"
-            onClick={() => setFiltersOpen((open) => !open)}
-            aria-expanded={filtersOpen}
-            aria-controls="catalog-filters"
-            className="mb-3 inline-flex items-center gap-2 rounded border border-kurio-border px-3 py-2 text-sm md:hidden"
-          >
-            <SlidersHorizontal aria-hidden="true" className="size-4" />
-            Filtros
-          </button>
           <div id="catalog-filters" className={`${filtersOpen ? 'block' : 'hidden'} md:block`}>
             <CatalogFilters
               key={`${minPrice ?? ''}-${maxPrice ?? ''}`}
@@ -110,27 +113,6 @@ function Home() {
         </aside>
 
         <section id="catalogo" aria-label="Catálogo">
-          <form
-            key={q ?? ''}
-            onSubmit={(e) => {
-              e.preventDefault()
-              const value = new FormData(e.currentTarget).get('q') as string
-              update({ q: value.trim() || undefined })
-            }}
-            className="mb-4 flex gap-2"
-          >
-            <input
-              name="q"
-              defaultValue={q}
-              placeholder="Buscar NFT"
-              aria-label="Buscar NFT"
-              className="min-w-0 flex-1 rounded border border-kurio-border bg-kurio-card px-3 py-2 text-sm"
-            />
-            <button className="rounded bg-kurio-primary px-4 py-2 text-sm font-bold text-kurio-ink hover:bg-kurio-primary-light">
-              Buscar
-            </button>
-          </form>
-
           <div className="mb-5 flex flex-wrap items-center gap-x-5 gap-y-3 text-sm">
             {TABS.map(([value, label]) => (
               <button
@@ -147,14 +129,14 @@ function Home() {
               </button>
             ))}
             <div className="ml-auto flex items-center gap-2">
-              <label htmlFor="sort" className="sr-only">Ordenar por</label>
+              <label htmlFor="sort" className="text-kurio-text-secondary">Ordenar por:</label>
               <select
                 id="sort"
                 value={sort}
                 onChange={(e) => update({ sort: e.target.value === 'recent' ? undefined : (e.target.value as NftSearch['sort']) })}
                 className="rounded border border-kurio-border bg-kurio-card px-2 py-1.5"
               >
-                <option value="recent">Mais recentes</option>
+                <option value="recent">Listados recentemente</option>
                 <option value="price_asc">Menor preço</option>
                 <option value="price_desc">Maior preço</option>
               </select>
