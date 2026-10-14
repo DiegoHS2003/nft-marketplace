@@ -15,7 +15,7 @@ export async function login(page: Page, redirect = '/') {
 }
 
 export async function fillCheckout(page: Page) {
-  await page.getByLabel('Nome do colecionador').fill('Ana Colecionadora')
+  await page.getByLabel('Nome de exibição').fill('Ana Colecionadora')
   await page.getByLabel('E-mail').fill('ana@kurio.test')
   await page.getByLabel('Carteira').selectOption('w1')
   await page.getByLabel('Rede').selectOption('ethereum')

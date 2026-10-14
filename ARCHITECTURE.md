@@ -58,10 +58,10 @@ O modal usa `@base-ui/react/dialog` (foco preso automaticamente, `role="dialog"`
 
 ### Desvios do Figma
 
-- **Galeria do detalhe tem uma imagem só.** O Figma mostra 4 miniaturas + imagem grande, mas o contrato de `Nft` só tem um campo `image`. Reaproveitar a mesma imagem em miniaturas fictícias seria dado fictício na UI (proibido pela regra do projeto); fica só a imagem grande.
+- ~~Galeria do detalhe tem uma imagem só.~~ **Corrigido na Etapa 7**: o contrato de `Nft` ganhou `images: string[]`, ver lá.
 - **Sem nota/avaliações ("★★★★★ 19 avaliações").** Não existe esse campo no contrato de `Nft` nem no enunciado — não inventei número.
 - **Sem "Mais desta coleção" e sem abas "Detalhes/Avaliações" no detalhe.** Não fazem parte das funcionalidades obrigatórias do enunciado para essa tela (galeria, informações, edição, quantidade, favoritos, compra); ficaram de fora para não alterar lógica/escopo nesta etapa, que era pra ser só visual.
-- **Pagamento (desktop) não tem o formulário extenso de perfil do Figma** (nome de usuário, código de indicação, ENS etc.) nem a lista de carteiras em rádio. O formulário atual usa exatamente os campos que a API já valida (nome, e-mail, carteira, rede) — criar campos novos sem contrato por trás seria dado fictício, e trocar os `<select>` por uma lista de rádios quebraria `getByLabel('Carteira').selectOption(...)` dos testes existentes. Os `<select>` ficaram, só com visual novo.
+- **Pagamento (desktop) não tem o formulário extenso de perfil do Figma** (nome de usuário, código de indicação, ENS etc.) nem a lista de carteiras em rádio. Na Etapa 7 o layout foi refeito pra bater com a grade de 2 colunas do Figma (rótulos, asteriscos, placeholders "Selecione uma carteira"/"Selecione uma rede", textarea "Observação do colecionador") e ganhou o campo de observação de verdade (`collector.note`, opcional, vai pro pedido via `POST /api/orders`) — mas os campos sem contrato por trás (nome de usuário, nome do perfil, ENS, código de indicação) continuam fora: inventá-los sem um endpoint que os valide/persista seria dado fictício na UI. A lista de carteiras em rádio também não entrou: o Figma mobile mostra uma tela de "conectar carteira" totalmente diferente (MetaMask/WalletConnect/Coinbase, trocar carteira), que é uma funcionalidade nova (simulação de provedor de carteira), não um reposicionamento visual — e trocar os `<select>` por rádios quebraria `getByLabel('Carteira').selectOption(...)` dos testes existentes sem ganho correspondente nesta etapa, que é de fidelidade visual.
 - **Botão "Ir para pagamento" (carrinho) não foi renomeado para "Conectar e finalizar" (Figma).** O clique aqui só navega pra tela de pagamento — conectar carteira continua acontecendo na tela seguinte. Trocar o texto sem trocar o comportamento ia descrever uma ação que ainda não acontece, e esse texto é usado em teste (`checkout.spec.ts`); mantive.
 - **Confirmação de pedido não tem frame mobile no Figma** (só Desktop 1440). Adaptei empilhando a grade de metadados (ID da transação/Data/Total/Carteira) de 4 para 2 colunas abaixo de `sm`, mesmo cartão centralizado nos três tamanhos.
 - **"Ver no Etherscan" é só decorativo** (`disabled`, `aria-disabled`, `title`), no mesmo padrão já usado em "Esqueceu a senha?" — o enunciado diz que "links de exploração são simulados", e simular um link clicável pra lugar nenhum pareceria sucesso funcional falso.
@@ -113,6 +113,34 @@ Sem desvios do Figma: nada visual mudou nesta etapa.
 ### Scripts
 
 `typecheck` (`tsc -b --noEmit`) e `lighthouse` (`node lighthouse/run.mjs`) foram adicionados ao `package.json`. O lint continua com `oxlint` (já estava configurado e passando, exit 0); só foram limpos os warnings baratos de `unused-vars` em `src/mocks/handlers.ts` (variáveis de destructuring usadas só pra omitir campos, prefixadas com `_`).
+
+## Etapa 7 — Fidelidade ao Figma e acessibilidade
+
+Passo de revisão visual (sem novas telas): comparação de cada rota com os prints de `design/` em 1440/768/390 e correção das diferenças, em ordem de impacto.
+
+### Galeria do detalhe (contrato novo)
+
+`Nft` ganhou `images: string[]` (4 imagens, geradas em `fixtures.ts` a partir dos mesmos 4 PNGs de `public/nfts/` já usados no catálogo — dado real do mock, não inventado no componente; `image` continua existindo e é sempre igual a `images[0]`, pra não quebrar quem já lia só `image`). `nfts.$id.tsx` ganhou a coluna de miniaturas clicáveis (`role="tablist"`/`role="tab"`, `aria-selected`) à esquerda da imagem grande, só em `md+` — no mobile o Figma não desenha miniaturas (só a imagem única), então o comportamento anterior foi mantido abaixo de `md`.
+
+### Pagamento
+
+Ver o desvio atualizado na Etapa 4: layout em grade de 2 colunas, rótulos/placeholders iguais ao Figma, campo de observação novo. `CreateOrderBody.collector` ganhou `note?: string` (opcional). O rótulo do campo de nome mudou de "Nome do colecionador" para "Nome de exibição" (texto do Figma) — `tests/e2e/helpers.ts` (`fillCheckout`) e `tests/e2e/session-expired.spec.ts` foram atualizados para o novo rótulo.
+
+### Modal de login/cadastro (desktop)
+
+O Figma mostra o modal com o fundo desfocado. Como `/login` e `/cadastro` continuam sendo rotas que substituem a tela inteira (ver Etapa 3 — manter a Início de verdade montada atrás exigiria rotas paralelas, que o TanStack Router não suporta nativamente), o `Dialog.Backdrop` passou a mostrar uma imagem real do catálogo (`/nfts/macaco-1.png`) desfocada (`blur-xl`) sob um overlay escuro, no lugar do preto sólido anterior — reproduz o efeito visual do Figma sem fingir que a Início funcional ainda está ali. Documentado também no componente (`AuthScreen.tsx`).
+
+### Responsivo (1440/768/390), sem overflow horizontal
+
+Causa raiz comum a dois bugs de overflow encontrados (detalhe do NFT e carrinho, ambos em 768): colunas de grid definidas como `1fr` usam `minmax(auto, 1fr)` por padrão, então o track não encolhe abaixo do conteúdo mínimo dos filhos — um texto longo ou uma linha de botões "empurra" a página inteira e aparece scroll horizontal. Corrigido com `minmax(0,1fr)` nas grades de 2 colunas (`nfts.$id.tsx`, `carrinho.tsx`, `pagamento.tsx`) e `min-w-0` nos itens de grid/flex que contêm texto truncável. No carrinho, a lista de itens (preço/edições/total em colunas fixas lado a lado) agora só vira "tabela" a partir de `lg` (1024px) — em 768 continua no layout empilhado que já existia para mobile, que é o que cabe sem cortar conteúdo. No detalhe, a linha "Adicionar ao carrinho" + "Favoritar" ganhou `flex-wrap` pelo mesmo motivo. Checado programaticamente (`document.documentElement.scrollWidth <= clientWidth`) nas 7 telas × 3 larguras — sem overflow restante.
+
+Barra lateral "Meu perfil" (`AccountSidebar.tsx`) ganhou os ícones por item que o Figma desenha (pessoa, pino, sacola, coração, etiqueta, download, alerta) e o indicador de item ativo virou uma barra à esquerda, como no Figma, em vez de só um fundo mais claro.
+
+### Acessibilidade
+
+`@axe-core/playwright` entrou como dependência de teste. `tests/e2e/accessibility.spec.ts` roda `axe` (regras `wcag2a`+`wcag2aa`) em início, detalhe, carrinho, pagamento, modal de login, perfil e carteiras, em desktop e mobile, falhando o teste se aparecer qualquer violação `serious`/`critical`. Rodando, isso pegou um problema real: os `<select>` de Carteira/Rede em `pagamento.tsx` usavam `text-kurio-text-secondary/60` pro estado "vazio" (placeholder visual), o que cai pra contraste 4.03:1 contra o fundo — abaixo do mínimo 4.5:1 do WCAG AA. Trocado para `text-kurio-text-secondary` (sem opacidade reduzida), que já é usado em rótulos no resto do app e passa no teste.
+
+O resto dos requisitos de acessibilidade (foco preso e Esc nos diálogos, labels e erros associados, `aria-live` em avisos de tempo real/otimistas, alt em imagens relevantes) já vinha das etapas anteriores (Base UI `Dialog`, padrão de `role="alert"`/`role="status"` em toda mutation) e continua coberto pelos testes existentes (`cadastro.spec.ts` tem o teste de foco preso/Esc do diálogo).
 
 ### Lighthouse
 

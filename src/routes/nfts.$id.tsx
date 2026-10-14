@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
@@ -32,6 +32,8 @@ function NftDetail() {
   const isFavorite = favorites?.includes(id) ?? false
 
   const [quantity, setQuantity] = useState(1)
+  const [activeImage, setActiveImage] = useState(0)
+  useEffect(() => setActiveImage(0), [id])
 
   const notFound = isError && isAxiosError(error) && error.response?.status === 404
 
@@ -88,27 +90,53 @@ function NftDetail() {
       )}
 
       {data && (
-        <section className="grid gap-6 md:grid-cols-2 md:gap-12">
-          <div className="relative">
-            <img
-              src={data.image}
-              alt={data.name}
-              fetchPriority="high"
-              className="aspect-square w-full rounded-2xl border border-kurio-border object-cover"
-            />
-            <button
-              type="button"
-              onClick={onToggleFavorite}
-              disabled={toggleFavorite.isPending}
-              aria-pressed={isFavorite}
-              aria-label={favoriteLabel}
-              className="absolute right-3 top-3 flex size-10 items-center justify-center rounded-full bg-kurio-ink/80 text-kurio-text backdrop-blur disabled:opacity-50 md:hidden"
+        <section className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:gap-8 lg:gap-12">
+          <div className="flex min-w-0 gap-3 md:gap-4">
+            <div
+              role="tablist"
+              aria-label="Imagens do NFT"
+              className="hidden shrink-0 flex-col gap-3 md:flex"
             >
-              <Heart aria-hidden="true" className={isFavorite ? 'size-5 fill-kurio-coral text-kurio-coral' : 'size-5'} />
-            </button>
+              {data.images.map((src, i) => (
+                <button
+                  key={src + i}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeImage === i}
+                  aria-label={`Ver imagem ${i + 1} de ${data.images.length} de ${data.name}`}
+                  onClick={() => setActiveImage(i)}
+                  className={
+                    activeImage === i
+                      ? 'size-16 shrink-0 overflow-hidden rounded-xl border-2 border-kurio-primary lg:size-20'
+                      : 'size-16 shrink-0 overflow-hidden rounded-xl border-2 border-transparent opacity-70 transition-opacity hover:opacity-100 lg:size-20'
+                  }
+                >
+                  <img src={src} alt="" className="size-full object-cover" />
+                </button>
+              ))}
+            </div>
+
+            <div className="relative min-w-0 flex-1">
+              <img
+                src={data.images[activeImage] ?? data.image}
+                alt={data.name}
+                fetchPriority="high"
+                className="aspect-square w-full rounded-2xl border border-kurio-border object-cover"
+              />
+              <button
+                type="button"
+                onClick={onToggleFavorite}
+                disabled={toggleFavorite.isPending}
+                aria-pressed={isFavorite}
+                aria-label={favoriteLabel}
+                className="absolute right-3 top-3 flex size-10 items-center justify-center rounded-full bg-kurio-ink/80 text-kurio-text backdrop-blur disabled:opacity-50 md:hidden"
+              >
+                <Heart aria-hidden="true" className={isFavorite ? 'size-5 fill-kurio-coral text-kurio-coral' : 'size-5'} />
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-col">
+          <div className="flex min-w-0 flex-col">
             <p className="text-sm text-kurio-text-secondary">
               {data.collection} · {NETWORK_LABEL[data.network] ?? data.network}
             </p>
@@ -155,7 +183,7 @@ function NftDetail() {
               </div>
             )}
 
-            <div className="fixed inset-x-0 bottom-0 z-10 mt-6 flex gap-3 border-t border-kurio-border bg-kurio-ink p-4 md:static md:mt-8 md:border-0 md:bg-transparent md:p-0">
+            <div className="fixed inset-x-0 bottom-0 z-10 mt-6 flex flex-wrap gap-3 border-t border-kurio-border bg-kurio-ink p-4 md:static md:mt-8 md:border-0 md:bg-transparent md:p-0">
               <button
                 disabled={data.editionsAvailable === 0 || add.isPending}
                 onClick={() => add.mutate({ nftId: data.id, quantity })}

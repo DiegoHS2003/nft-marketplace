@@ -37,7 +37,7 @@ test('sessão expira no pagamento: formulário volta preenchido e a compra fecha
 
   await expect(page).toHaveURL(/\/pagamento$/)
   // os campos preenchidos antes da sessão cair voltam sem precisar digitar de novo
-  await expect(page.getByLabel('Nome do colecionador')).toHaveValue('Ana Colecionadora')
+  await expect(page.getByLabel('Nome de exibição')).toHaveValue('Ana Colecionadora')
   await expect(page.getByLabel('Carteira')).toHaveValue('w1')
   await expect(page.getByLabel('Rede')).toHaveValue('ethereum')
 

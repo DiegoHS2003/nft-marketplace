@@ -9,6 +9,7 @@ export interface Nft {
   editionsAvailable: number
   editionsTotal: number
   image: string
+  images: string[]
   tag: 'new' | 'trending' | null
   version: number
   createdAt: string
@@ -117,7 +118,7 @@ export interface CreateOrderBody {
   quoteId: string
   walletId: string
   network: Network
-  collector: { name: string; email: string }
+  collector: { name: string; email: string; note?: string }
 }
 
 export interface RealtimeEvent<T> {

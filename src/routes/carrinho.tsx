@@ -78,15 +78,15 @@ function CartPage() {
       )}
 
       {cart && cart.items.length > 0 && (
-        <div className="grid gap-6 md:grid-cols-[1fr_320px] md:items-start lg:grid-cols-[1fr_360px]">
-          <div>
+        <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_320px] md:items-start lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="min-w-0">
             {update.isError && (
               <p role="alert" className="mb-3 text-sm text-kurio-coral">
                 {messageOf(update.error, 'Não foi possível alterar a quantidade.')}
               </p>
             )}
 
-            <div className="mb-2 hidden items-center gap-4 px-3 text-sm text-kurio-text-secondary md:flex">
+            <div className="mb-2 hidden items-center gap-4 px-3 text-sm text-kurio-text-secondary lg:flex">
               <span className="flex-1">NFTs</span>
               <span className="w-20">Preço</span>
               <span className="w-28 text-center">Edições</span>
@@ -98,9 +98,9 @@ function CartPage() {
               {cart.items.map(({ nft, quantity }) => (
                 <li
                   key={nft.id}
-                  className="flex flex-wrap items-center gap-3 rounded-xl bg-kurio-card p-3 md:flex-nowrap md:gap-4"
+                  className="flex flex-wrap items-center gap-3 rounded-xl bg-kurio-card p-3 lg:flex-nowrap lg:gap-4"
                 >
-                  <div className="flex basis-full items-center gap-4 md:basis-0 md:flex-1">
+                  <div className="flex basis-full items-center gap-4 lg:basis-0 lg:flex-1">
                     <img
                       src={nft.image}
                       alt={nft.name}
@@ -110,13 +110,13 @@ function CartPage() {
                     />
                     <div className="min-w-0">
                       <p className="truncate text-kurio-text">{nft.name}</p>
-                      <p className="text-kurio-text-accent md:hidden">{nft.price} ETH</p>
+                      <p className="text-kurio-text-accent lg:hidden">{nft.price} ETH</p>
                     </div>
                   </div>
 
-                  <p className="hidden w-20 text-kurio-text-accent md:block">{nft.price} ETH</p>
+                  <p className="hidden w-20 text-kurio-text-accent lg:block">{nft.price} ETH</p>
 
-                  <div className="flex items-center gap-2 md:w-28 md:justify-center">
+                  <div className="flex items-center gap-2 lg:w-28 lg:justify-center">
                     <button
                       aria-label={`Diminuir quantidade de ${nft.name}`}
                       disabled={quantity <= 1}
@@ -136,16 +136,16 @@ function CartPage() {
                     </button>
                   </div>
 
-                  <p className="hidden w-24 text-right font-bold text-kurio-text md:block">
+                  <p className="hidden w-24 text-right font-bold text-kurio-text lg:block">
                     {(Number(nft.price) * quantity).toFixed(2)} ETH
                   </p>
 
                   <button
                     onClick={() => remove.mutate(nft.id)}
                     aria-label={`Remover ${nft.name} do carrinho`}
-                    className="ml-auto flex items-center gap-1 text-sm text-kurio-text-secondary underline md:ml-0 md:w-20 md:justify-end"
+                    className="ml-auto flex items-center gap-1 text-sm text-kurio-text-secondary underline lg:ml-0 lg:w-20 lg:justify-end"
                   >
-                    <Trash2 aria-hidden="true" className="size-4 md:hidden" />
+                    <Trash2 aria-hidden="true" className="size-4 lg:hidden" />
                     Remover
                   </button>
                 </li>

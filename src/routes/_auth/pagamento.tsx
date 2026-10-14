@@ -26,6 +26,7 @@ function keyFor(payload: string) {
 interface Draft {
   name: string
   email: string
+  note: string
   walletId: string
   network: Network | ''
 }
@@ -59,11 +60,12 @@ function Checkout() {
   const [network, setNetwork] = useState<Network | ''>(draft?.network ?? '')
   const [name, setName] = useState(draft?.name ?? user?.name ?? '')
   const [email, setEmail] = useState(draft?.email ?? user?.email ?? '')
+  const [note, setNote] = useState(draft?.note ?? '')
 
   // se a sessão expirar (ex.: ao confirmar a compra), salva o que já foi preenchido antes do
   // redirect pro login, pra restaurar quando o usuário voltar e concluir sem perder nada
-  const formRef = useRef<Draft>({ name, email, walletId, network })
-  formRef.current = { name, email, walletId, network }
+  const formRef = useRef<Draft>({ name, email, note, walletId, network })
+  formRef.current = { name, email, note, walletId, network }
   useEffect(() => {
     const saveDraft = () => sessionStorage.setItem(DRAFT_KEY, JSON.stringify(formRef.current))
     window.addEventListener(SESSION_EXPIRED_EVENT, saveDraft)
@@ -89,7 +91,7 @@ function Checkout() {
       quoteId: reviewedQuote,
       walletId,
       network,
-      collector: { name: name.trim(), email: email.trim() },
+      collector: { name: name.trim(), email: email.trim(), ...(note.trim() && { note: note.trim() }) },
     }
     create.mutate(
       { body, idempotencyKey: keyFor(JSON.stringify(body)) },
@@ -117,57 +119,61 @@ function Checkout() {
     )
   }
 
-  const input = 'rounded-lg border border-kurio-border bg-kurio-ink-soft px-3 py-2 text-sm'
+  const input = 'rounded-lg border border-kurio-border bg-kurio-ink-soft px-3 py-2.5 text-sm text-kurio-text placeholder:text-kurio-text-secondary focus:border-kurio-primary focus:outline-none'
+  const select = `${input} disabled:opacity-50`
   const card = 'rounded-2xl bg-kurio-card p-5'
+  const labelClass = 'mb-1 block text-sm text-kurio-text-secondary'
 
   return (
     <main className="mx-auto max-w-5xl px-4 pb-6 pt-4 sm:px-6 md:pt-8">
       <h1 className="mb-6 text-2xl font-bold text-kurio-text">Pagamento</h1>
 
-      <div className="grid gap-6 md:grid-cols-[1fr_340px] md:items-start">
-        <form onSubmit={onSubmit} className="order-2 flex flex-col gap-6 md:order-1">
+      <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_340px] md:items-start">
+        <form onSubmit={onSubmit} className="order-2 flex min-w-0 flex-col gap-6 md:order-1">
           <div className={card}>
-            <h2 className="mb-4 text-lg font-bold text-kurio-text">Dados do colecionador</h2>
-            <div className="flex flex-col gap-3">
+            <h2 className="mb-4 text-lg font-bold text-kurio-text">Perfil do colecionador</h2>
+            <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="name" className="mb-1 block text-sm text-kurio-text-secondary">Nome do colecionador</label>
+                <label htmlFor="name" className={labelClass}>Nome de exibição <span aria-hidden="true" className="text-kurio-coral">*</span></label>
                 <input id="name" required value={name} onChange={(e) => setName(e.target.value)}
                   aria-invalid={!!fields.name} className={`w-full ${input}`} />
                 {fields.name && <p role="alert" className="mt-1 text-sm text-kurio-coral">{fields.name}</p>}
               </div>
 
               <div>
-                <label htmlFor="email" className="mb-1 block text-sm text-kurio-text-secondary">E-mail</label>
+                <label htmlFor="email" className={labelClass}>E-mail <span aria-hidden="true" className="text-kurio-coral">*</span></label>
                 <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
                   aria-invalid={!!fields.email} className={`w-full ${input}`} />
                 {fields.email && <p role="alert" className="mt-1 text-sm text-kurio-coral">{fields.email}</p>}
               </div>
-            </div>
-          </div>
 
-          <div className={card}>
-            <h2 className="mb-4 text-lg font-bold text-kurio-text">Carteira e rede</h2>
-            <div className="flex flex-col gap-3">
               <div>
-                <label htmlFor="wallet" className="mb-1 block text-sm text-kurio-text-secondary">Carteira</label>
-                <select id="wallet" required value={walletId} className={`w-full ${input}`}
+                <label htmlFor="wallet" className={labelClass}>Carteira <span aria-hidden="true" className="text-kurio-coral">*</span></label>
+                <select id="wallet" required value={walletId} className={`w-full ${select} ${!walletId && 'text-kurio-text-secondary'}`}
                   onChange={(e) => { setWalletId(e.target.value); setNetwork('') }}>
-                  <option value="">Selecione</option>
+                  <option value="">Selecione uma carteira</option>
                   {wallets.map((w) => (
-                    <option key={w.id} value={w.id}>{w.label} ({w.address.slice(0, 8)}…)</option>
+                    <option key={w.id} value={w.id} className="text-kurio-text">{w.label} ({w.address.slice(0, 8)}…)</option>
                   ))}
                 </select>
                 {fields.walletId && <p role="alert" className="mt-1 text-sm text-kurio-coral">{fields.walletId}</p>}
               </div>
 
               <div>
-                <label htmlFor="network" className="mb-1 block text-sm text-kurio-text-secondary">Rede</label>
-                <select id="network" required value={network} className={`w-full ${input}`} disabled={!wallet}
+                <label htmlFor="network" className={labelClass}>Rede <span aria-hidden="true" className="text-kurio-coral">*</span></label>
+                <select id="network" required value={network} disabled={!wallet}
+                  className={`w-full ${select} ${!network && 'text-kurio-text-secondary'}`}
                   onChange={(e) => setNetwork(e.target.value as Network)}>
-                  <option value="">Selecione</option>
-                  {wallet?.networks.map((n) => <option key={n} value={n}>{n}</option>)}
+                  <option value="">Selecione uma rede</option>
+                  {wallet?.networks.map((n) => <option key={n} value={n} className="text-kurio-text">{n}</option>)}
                 </select>
                 {fields.network && <p role="alert" className="mt-1 text-sm text-kurio-coral">{fields.network}</p>}
+              </div>
+
+              <div className="sm:col-span-2">
+                <label htmlFor="note" className={labelClass}>Observação do colecionador (opcional)</label>
+                <textarea id="note" rows={3} value={note} onChange={(e) => setNote(e.target.value)}
+                  className={`w-full resize-none ${input}`} />
               </div>
             </div>
           </div>

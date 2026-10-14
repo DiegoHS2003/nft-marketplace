@@ -13,6 +13,9 @@ export const seedNfts: Nft[] = Array.from({ length: 24 }, (_, i) => ({
   editionsTotal: 10,
   editionsAvailable: i % 7 === 0 ? 0 : 3 + (i % 5),
   image: `/nfts/macaco-${(i % 4) + 1}.png`,
+  // mesmas 4 imagens do catálogo, só que na galeria do detalhe: a de capa primeiro,
+  // depois as outras 3, em ordem fixa por NFT (dado real do mock, não inventado no componente)
+  images: Array.from({ length: 4 }, (_, j) => `/nfts/macaco-${((i + j) % 4) + 1}.png`),
   tag: i < 6 ? 'new' : i % 3 === 0 ? 'trending' : null,
   version: 1,
   createdAt: new Date(Date.UTC(2026, 8, 30) - i * 86_400_000).toISOString(),

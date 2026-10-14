@@ -64,9 +64,10 @@ export function AuthScreen({ mode, redirect }: Props) {
   )
 }
 
-// No Figma desktop, login/cadastro aparecem como um diálogo sobre a Início. Como as rotas trocam a
-// tela inteira (sem manter a Início montada atrás), o fundo é um overlay escuro sólido, não a Início
-// desfocada — ver ARCHITECTURE.md.
+// No Figma desktop, login/cadastro aparecem como um diálogo sobre a Início desfocada. Como as rotas
+// trocam a tela inteira (sem manter a Início montada atrás — ver ARCHITECTURE.md), o fundo reaproveita
+// uma imagem real do catálogo (não a página anterior de verdade) desfocada atrás de um overlay escuro,
+// pra reproduzir o efeito visual do Figma sem fingir que é a Início funcional ainda ali.
 function AuthDialog({ mode, redirect }: Props) {
   const [open, setOpen] = useState(true)
   const router = useRouter()
@@ -86,7 +87,15 @@ function AuthDialog({ mode, redirect }: Props) {
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-40 bg-black/70" />
+        <Dialog.Backdrop className="fixed inset-0 z-40 overflow-hidden bg-kurio-ink">
+          <img
+            src="/nfts/macaco-1.png"
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 size-full scale-110 object-cover opacity-50 blur-xl"
+          />
+          <div className="absolute inset-0 bg-kurio-ink/75" />
+        </Dialog.Backdrop>
         <Dialog.Popup
           aria-modal="true"
           className="fixed left-1/2 top-1/2 z-50 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg border border-kurio-border bg-kurio-card p-6 shadow-xl"
