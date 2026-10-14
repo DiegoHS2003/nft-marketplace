@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
@@ -35,7 +35,13 @@ function Checkout() {
   const [network, setNetwork] = useState<Network | ''>('')
   const [name, setName] = useState(user?.name ?? '')
   const [email, setEmail] = useState(user?.email ?? '')
-  const [quoteChanged, setQuoteChanged] = useState(false)
+
+  // cotação que o usuário revisou: congela na primeira carga e só muda quando ele aceita
+  const [reviewedQuote, setReviewedQuote] = useState<string | null>(null)
+  useEffect(() => {
+    if (cart && reviewedQuote === null) setReviewedQuote(cart.quoteId)
+  }, [cart, reviewedQuote])
+  const stale = !!cart && reviewedQuote !== null && cart.quoteId !== reviewedQuote
 
   const wallet = wallets.find((w) => w.id === walletId)
   const apiError = isAxiosError<QuoteChangedBody>(create.error) ? create.error.response?.data : undefined
@@ -44,14 +50,13 @@ function Checkout() {
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!cart || !network || create.isPending) return
+    if (!cart || !network || !reviewedQuote || stale || create.isPending) return
     const body: CreateOrderBody = {
-      quoteId: cart.quoteId,
+      quoteId: reviewedQuote,
       walletId,
       network,
       collector: { name: name.trim(), email: email.trim() },
     }
-    setQuoteChanged(false)
     create.mutate(
       { body, idempotencyKey: keyFor(JSON.stringify(body)) },
       {
@@ -61,9 +66,9 @@ function Checkout() {
         },
         onError: (error) => {
           const data = isAxiosError<QuoteChangedBody>(error) ? error.response?.data : undefined
-          if (data?.code === 'quote_changed') {
-            if (data.cart) qc.setQueryData(cartQueryOptions.queryKey, data.cart)
-            setQuoteChanged(true)
+          // o servidor recusou a cotação: o carrinho novo entra e o aviso de "valores mudaram" aparece
+          if (data?.code === 'quote_changed' && data.cart) {
+            qc.setQueryData(cartQueryOptions.queryKey, data.cart)
           }
         },
       },
@@ -113,12 +118,15 @@ function Checkout() {
         </select>
         {fields.network && <p role="alert" className="text-sm">{fields.network}</p>}
 
-        {quoteChanged && (
-          <p role="alert" className="rounded border border-kurio-accent p-3">
-            Preços ou quantidades mudaram. Confira o resumo atualizado e confirme de novo.
-          </p>
+        {stale && (
+          <div role="alert" className="rounded border border-kurio-accent p-3">
+            <p>Os valores do pedido mudaram desde a sua revisão. Confira o resumo e aceite os novos valores para continuar.</p>
+            <button type="button" onClick={() => cart && setReviewedQuote(cart.quoteId)} className="mt-2 underline">
+              Aceitar novos valores
+            </button>
+          </div>
         )}
-        {apiError && !quoteChanged && !apiError.fields && (
+        {apiError && !apiError.fields && apiError.code !== 'quote_changed' && (
           <p role="alert">{apiError.message}</p>
         )}
         {networkFailure && (
@@ -127,9 +135,9 @@ function Checkout() {
           </p>
         )}
 
-        <button disabled={create.isPending || !cart}
+        <button disabled={create.isPending || !cart || stale}
           className="rounded bg-kurio-accent px-4 py-2 text-kurio-bg disabled:opacity-50">
-          {create.isPending ? 'Enviando pedido...' : quoteChanged ? 'Confirmar com os novos valores' : 'Confirmar compra'}
+          {create.isPending ? 'Enviando pedido...' : 'Confirmar compra'}
         </button>
       </form>
 

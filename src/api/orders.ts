@@ -12,8 +12,6 @@ export const orderQueryOptions = (id: string) =>
   queryOptions({
     queryKey: ['order', id],
     queryFn: async ({ signal }) => (await api.get<Order>(`/orders/${id}`, { signal })).data,
-    // enquanto pendente, consulta de novo; confirmado e recusado são finais
-    refetchInterval: (query) => (query.state.data?.status === 'pending' ? 1500 : false),
   })
 
 export function useCreateOrder() {

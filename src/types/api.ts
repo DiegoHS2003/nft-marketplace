@@ -94,3 +94,21 @@ export interface CreateOrderBody {
   network: Network
   collector: { name: string; email: string }
 }
+
+export interface RealtimeEvent<T> {
+  id: string
+  resource: { type: 'nft' | 'order'; id: string }
+  version: number
+  data: T
+}
+
+export interface NftUpdate {
+  price: string
+  editionsAvailable: number
+}
+
+export interface OrderUpdate {
+  status: OrderStatus
+  txHash: string | null
+  refusalReason: string | null
+}

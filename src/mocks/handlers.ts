@@ -1,6 +1,7 @@
 import { http, HttpResponse, delay } from 'msw'
 import type { ApiError, CreateOrderBody, NftListResponse, Order } from '@/types/api'
 import { db, ready, saveCarts, saveNfts, saveOrders, saveSessions, sha256, type StoredOrder } from './db'
+import { emitNftUpdated, emitOrderUpdated } from './realtime'
 
 const err = (status: number, code: string, message: string, fields?: Record<string, string>) =>
   HttpResponse.json<ApiError>({ code, message, fields }, { status })
@@ -98,12 +99,19 @@ function settleOrder(order: StoredOrder) {
     }
     saveNfts()
     saveCarts()
+    for (const line of order.cartLines) emitNftUpdated(line.nftId)
   } else {
     order.status = 'refused'
     order.refusalReason = 'Pagamento recusado pela carteira'
   }
   order.version += 1
   saveOrders()
+  emitOrderUpdated(order)
+}
+
+function scheduleSettle(order: StoredOrder) {
+  if (order.status !== 'pending') return
+  setTimeout(() => settleOrder(order), Math.max(0, order.confirmAt - Date.now()) + 50)
 }
 
 export const handlers = [
@@ -349,11 +357,12 @@ export const handlers = [
 
     // mesma chave + mesmo conteúdo = mesmo pedido; mesma chave + conteúdo diferente = conflito
     const existing = [...db.orders.values()].find((o) => o.userId === auth.user.id && o.idempotencyKey === key)
-    if (existing) {
+        if (existing) {
       if (existing.payloadHash !== payloadHash) {
         return err(409, 'idempotency_conflict', 'Esta chave já foi usada com outro conteúdo')
       }
       settleOrder(existing)
+      scheduleSettle(existing)
       return HttpResponse.json(toOrder(existing))
     }
 
@@ -408,6 +417,10 @@ export const handlers = [
     }
     db.orders.set(id, order)
     saveOrders()
+    scheduleSettle(order)
+
+    // o pedido foi criado, mas a resposta "se perde": o cliente repete com a mesma chave
+    if (scenario() === 'order_timeout') return HttpResponse.error()
 
     // o pedido foi criado, mas a resposta "se perde": o cliente repete com a mesma chave
     if (scenario() === 'order_timeout') return HttpResponse.error()
@@ -422,8 +435,9 @@ export const handlers = [
     if (!auth) return err(401, 'session_expired', 'Sessão inválida ou expirada')
     const order = db.orders.get(params.id as string)
     if (!order) return err(404, 'not_found', 'Pedido não encontrado')
-    if (order.userId !== auth.user.id) return err(403, 'forbidden', 'Você não tem acesso a este pedido')
+        if (order.userId !== auth.user.id) return err(403, 'forbidden', 'Você não tem acesso a este pedido')
     settleOrder(order)
+    scheduleSettle(order)
     return HttpResponse.json(toOrder(order))
   }),
 ]
