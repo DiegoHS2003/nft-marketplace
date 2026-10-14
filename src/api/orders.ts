@@ -12,6 +12,8 @@ export const orderQueryOptions = (id: string) =>
   queryOptions({
     queryKey: ['order', id],
     queryFn: async ({ signal }) => (await api.get<Order>(`/orders/${id}`, { signal })).data,
+        // o socket é o caminho principal; esta consulta lenta é só uma rede de segurança
+    refetchInterval: (query) => (query.state.data?.status === 'pending' ? 4000 : false),
   })
 
 export function useCreateOrder() {
