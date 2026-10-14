@@ -30,3 +30,26 @@ Contagem "self-excluding": a contagem de coleções ignora o filtro de coleção
 ### Rota "fora do escopo"
 
 Os itens de menu Mercado / Criadores / Aprenda eram `<span>` desabilitados. Agora são links reais para `/fora-do-escopo?secao=<nome>`, uma página simples que explica que a área não faz parte da entrega. Segue a regra do enunciado: "ações fora do escopo não devem aparentar sucesso funcional".
+
+## Etapa 2 — Skeletons com shimmer
+
+Sem desvios do Figma (o Figma não desenha estados de carregamento). Cenário novo no mock: `window.__kurioMock.setScenario('slow_network')` adiciona +3s nos GETs de `/nfts`, `/nfts/:id` e `/cart`, só para dar tempo de ver o skeleton em teste/demonstração.
+
+## Etapa 3 — Login e Cadastro
+
+### Desvios do Figma
+
+- **O modal de login/cadastro no desktop não mostra a Início desfocada atrás.** No Figma, o modal aparece sobre a página inicial. Como `/login` e `/cadastro` são rotas que substituem a tela inteira (o TanStack Router desmonta a rota anterior ao navegar, sem suporte nativo a "rotas paralelas"/background routes como o Next.js), manter a Início renderizada atrás exigiria uma arquitetura de roteamento bem mais complexa para um ganho só estético. O fundo do modal é um overlay escuro sólido (`bg-black/70`), na mesma paleta do app.
+- **Abas "Entrar | Criar conta" fazem navegação real** entre `/login` e `/cadastro` (não só trocam um estado local), para que o parâmetro `?redirect=` seja sempre preservado nos dois sentidos — é o mesmo link usado no rodapé da versão mobile ("Novo na Kurio? Crie uma conta" / "Já tem uma conta? Entre").
+- **"Esqueceu a senha?" e os botões "Continuar com Google/Facebook"** ficam desabilitados (`disabled`, `aria-disabled`, `title="Fora do escopo do desafio"`), com uma frase abaixo explicando isso — eles aparecem no Figma mas não têm comportamento especificado no enunciado.
+- **Mostrar/ocultar senha**: adicionei o ícone de olho dos dois campos de senha (login e cadastro), que o Figma já mostrava mas o código anterior não implementava.
+
+### Bug real encontrado e corrigido (não é desvio de design, é correção)
+
+Usuários cadastrados por `POST /api/auth/register` só existiam na memória da aba — um refresh ou navegação de página inteira apagava o usuário (o `db.users` do mock recarregava só os 2 usuários semente). Isso quebrava a exigência do enunciado de que "a sessão deve ser recuperável após refresh" especificamente para quem acabou de se cadastrar. Corrigido em `src/mocks/db.ts`: novos usuários agora são salvos em `localStorage` (`kurio:mock-users`), igual a carrinhos/pedidos/sessões, e `resetDb()` limpa essa chave também.
+
+### Diálogo acessível
+
+O modal usa `@base-ui/react/dialog` (foco preso automaticamente, `role="dialog"`, `aria-modal="true"`, título associado via `aria-labelledby`, Esc fecha). Dois cuidados extras:
+- **Fechar com Esc/X não pode cair numa aba em branco.** `window.history.length` conta a entrada inicial em branco do navegador, então não dá pra usar como sinal de "existe uma página anterior de verdade". Criado um contador próprio (`src/lib/navigationHistory.ts`) que conta quantas localizações o roteador já resolveu nesta sessão; só volta no histórico se houver mais de uma, senão manda pra Início.
+- **Foco volta pro elemento que abriu o diálogo** de graça, porque o Header (com o link "Entrar") fica montado durante toda a navegação (vive no layout raiz, fora do `<Outlet/>`) — o Base UI Dialog restaura o foco pro último elemento focado antes de abrir, que já é esse link.

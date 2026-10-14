@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/_auth'
+import { Route as CadastroRouteImport } from './routes/cadastro'
 import { Route as CarrinhoRouteImport } from './routes/carrinho'
 import { Route as ForaDoEscopoRouteImport } from './routes/fora-do-escopo'
 import { Route as LoginRouteImport } from './routes/login'
@@ -26,6 +27,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CadastroRoute = CadastroRouteImport.update({
+  id: '/cadastro',
+  path: '/cadastro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CarrinhoRoute = CarrinhoRouteImport.update({
@@ -66,6 +72,7 @@ const AuthPedidoIdRoute = AuthPedidoIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/cadastro': typeof CadastroRoute
   '/carrinho': typeof CarrinhoRoute
   '/fora-do-escopo': typeof ForaDoEscopoRoute
   '/login': typeof LoginRoute
@@ -76,6 +83,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/cadastro': typeof CadastroRoute
   '/carrinho': typeof CarrinhoRoute
   '/fora-do-escopo': typeof ForaDoEscopoRoute
   '/login': typeof LoginRoute
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_auth': typeof AuthRouteWithChildren
+  '/cadastro': typeof CadastroRoute
   '/carrinho': typeof CarrinhoRoute
   '/fora-do-escopo': typeof ForaDoEscopoRoute
   '/login': typeof LoginRoute
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/cadastro'
     | '/carrinho'
     | '/fora-do-escopo'
     | '/login'
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/cadastro'
     | '/carrinho'
     | '/fora-do-escopo'
     | '/login'
@@ -121,6 +132,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_auth'
+    | '/cadastro'
     | '/carrinho'
     | '/fora-do-escopo'
     | '/login'
@@ -133,6 +145,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
+  CadastroRoute: typeof CadastroRoute
   CarrinhoRoute: typeof CarrinhoRoute
   ForaDoEscopoRoute: typeof ForaDoEscopoRoute
   LoginRoute: typeof LoginRoute
@@ -153,6 +166,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cadastro': {
+      id: '/cadastro'
+      path: '/cadastro'
+      fullPath: '/cadastro'
+      preLoaderRoute: typeof CadastroRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/carrinho': {
@@ -224,6 +244,7 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
+  CadastroRoute: CadastroRoute,
   CarrinhoRoute: CarrinhoRoute,
   ForaDoEscopoRoute: ForaDoEscopoRoute,
   LoginRoute: LoginRoute,

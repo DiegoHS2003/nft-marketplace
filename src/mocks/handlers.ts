@@ -1,6 +1,6 @@
 import { http, HttpResponse, delay } from 'msw'
 import type { ApiError, CreateOrderBody, Nft, NftFacets, NftListResponse, Order } from '@/types/api'
-import { db, ready, saveCarts, saveNfts, saveOrders, saveSessions, sha256, type StoredOrder } from './db'
+import { db, ready, saveCarts, saveNfts, saveOrders, saveSessions, saveUsers, sha256, type StoredOrder } from './db'
 import { emitNftUpdated, emitOrderUpdated } from './realtime'
 
 const err = (status: number, code: string, message: string, fields?: Record<string, string>) =>
@@ -148,6 +148,7 @@ export const handlers = [
     }
     const user = { id: `u${db.users.length + 1}`, name: name.trim(), email: normalized, passwordHash: await sha256(password) }
     db.users.push(user)
+    saveUsers()
     const token = crypto.randomUUID()
     db.sessions.set(token, user.id)
     saveSessions()

@@ -1,10 +1,14 @@
-import { createRootRouteWithContext, Link, Outlet } from '@tanstack/react-router'
+import { useEffect } from 'react'
+import { createRootRouteWithContext, Link, Outlet, useRouterState } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
 import { Header } from '@/components/Header'
 import { useRealtime } from '@/lib/useRealtime'
+import { markLocationSeen } from '@/lib/navigationHistory'
 
 function Root() {
   const notice = useRealtime()
+  const href = useRouterState({ select: (s) => s.location.href })
+  useEffect(() => markLocationSeen(), [href])
   return (
     <>
       <Header />
