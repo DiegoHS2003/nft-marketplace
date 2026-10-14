@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { fetchNfts, type NftSearch } from '@/api/nfts'
 
@@ -89,8 +89,10 @@ function Home() {
           <ul className="grid grid-cols-3 gap-4">
             {data.items.map((nft) => (
               <li key={nft.id} className="rounded bg-kurio-surface p-3">
-                <img src={nft.image} alt={nft.name} className="aspect-square w-full rounded object-cover" />
-                <p className="mt-2">{nft.name}</p>
+                <Link to="/nfts/$id" params={{ id: nft.id }} className="block">
+                   <img src={nft.image} alt={nft.name} className="aspect-square w-full rounded object-cover" />
+                 <p className="mt-2">{nft.name}</p>
+                </Link>   
                 <p className="text-kurio-accent">{nft.price} ETH</p>
               </li>
             ))}

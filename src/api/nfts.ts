@@ -1,5 +1,5 @@
 import { api } from '@/lib/api'
-import type { NftListResponse } from '@/types/api'
+import type { Nft, NftListResponse } from '@/types/api'
 
 export interface NftSearch {
   q?: string
@@ -10,5 +10,10 @@ export interface NftSearch {
 
 export async function fetchNfts(search: NftSearch, signal?: AbortSignal) {
   const { data } = await api.get<NftListResponse>('/nfts', { params: search, signal })
+  return data
+}
+
+export async function fetchNft(id: string, signal?: AbortSignal) {
+  const { data } = await api.get<Nft>(`/nfts/${id}`, { signal })
   return data
 }
