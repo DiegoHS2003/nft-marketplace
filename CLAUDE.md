@@ -16,7 +16,7 @@ React, TypeScript, Vite, TanStack Router (file-based) e Query, Axios, socket.io-
 - Valores em ETH sempre como string decimal (o mock compara com BigInt).
 - Fidelidade ao Figma: prints em design/, paleta em design/paleta.txt, fonte Roboto Mono. Todo desvio vai para ARCHITECTURE.md.
 - Acessibilidade: labels, foco visível, erros associados aos campos, prefers-reduced-motion.
-- Uma etapa por vez, commit e push ao fim de cada uma. Se travar após 2 tentativas, pare e explique o bloqueio.
+- Uma etapa por vez. Não faça commit nem push: o autor faz. Se travar após 2 tentativas, pare e explique o bloqueio.
 - Explique em linguagem simples o que mudou: o autor é júnior e vai defender este código.
 
 ## Decisões que não devem ser desfeitas
