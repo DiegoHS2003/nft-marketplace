@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { cartQueryOptions } from '@/api/cart'
 import { useCreateOrder, walletsQueryOptions } from '@/api/orders'
-import { useUser } from '@/lib/auth'
+import { SESSION_EXPIRED_EVENT, useUser } from '@/lib/auth'
 import type { ApiError, Cart, CreateOrderBody, Network } from '@/types/api'
 
 export const Route = createFileRoute('/_auth/pagamento')({ component: Checkout })
 
 const ATTEMPT_KEY = 'kurio:checkout-attempt'
+const DRAFT_KEY = 'kurio:checkout-draft'
 
 // Mesma chave enquanto o conteúdo do pedido for o mesmo (clique repetido, reenvio, refresh)
 function keyFor(payload: string) {
@@ -19,6 +20,23 @@ function keyFor(payload: string) {
   const key = crypto.randomUUID()
   sessionStorage.setItem(ATTEMPT_KEY, JSON.stringify({ payload, key }))
   return key
+}
+
+interface Draft {
+  name: string
+  email: string
+  walletId: string
+  network: Network | ''
+}
+
+// não é destrutivo: só a limpeza (em efeito) de fato consome o rascunho
+function readDraft(): Draft | null {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY)
+    return raw ? (JSON.parse(raw) as Draft) : null
+  } catch {
+    return null
+  }
 }
 
 type QuoteChangedBody = ApiError & { cart?: Cart }
@@ -31,10 +49,25 @@ function Checkout() {
   const { data: wallets = [] } = useQuery(walletsQueryOptions)
   const create = useCreateOrder()
 
-  const [walletId, setWalletId] = useState('')
-  const [network, setNetwork] = useState<Network | ''>('')
-  const [name, setName] = useState(user?.name ?? '')
-  const [email, setEmail] = useState(user?.email ?? '')
+  const [draft] = useState(readDraft)
+  useEffect(() => {
+    if (draft) sessionStorage.removeItem(DRAFT_KEY)
+  }, [draft])
+
+  const [walletId, setWalletId] = useState(draft?.walletId ?? '')
+  const [network, setNetwork] = useState<Network | ''>(draft?.network ?? '')
+  const [name, setName] = useState(draft?.name ?? user?.name ?? '')
+  const [email, setEmail] = useState(draft?.email ?? user?.email ?? '')
+
+  // se a sessão expirar (ex.: ao confirmar a compra), salva o que já foi preenchido antes do
+  // redirect pro login, pra restaurar quando o usuário voltar e concluir sem perder nada
+  const formRef = useRef<Draft>({ name, email, walletId, network })
+  formRef.current = { name, email, walletId, network }
+  useEffect(() => {
+    const saveDraft = () => sessionStorage.setItem(DRAFT_KEY, JSON.stringify(formRef.current))
+    window.addEventListener(SESSION_EXPIRED_EVENT, saveDraft)
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, saveDraft)
+  }, [])
 
   // cotação que o usuário revisou: congela na primeira carga e só muda quando ele aceita
   const [reviewedQuote, setReviewedQuote] = useState<string | null>(null)

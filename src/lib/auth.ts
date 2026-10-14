@@ -5,6 +5,23 @@ import type { User } from '@/types/api'
 const TOKEN_KEY = 'kurio:token'
 const PUBLIC_KEYS = ['nfts', 'nft', 'session'] // não apagar: o Header escuta a sessão
 
+export const SESSION_EXPIRED_EVENT = 'kurio:session-expired'
+const SESSION_EXPIRED_NOTICE_KEY = 'kurio:session-expired-notice'
+
+// dispara pra quem precisa agir na hora (ex.: pagamento salvando os campos antes do redirect)
+export function notifySessionExpired() {
+  sessionStorage.setItem(SESSION_EXPIRED_NOTICE_KEY, '1')
+  window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
+}
+
+export function hasSessionExpiredNotice() {
+  return sessionStorage.getItem(SESSION_EXPIRED_NOTICE_KEY) === '1'
+}
+
+export function clearSessionExpiredNotice() {
+  sessionStorage.removeItem(SESSION_EXPIRED_NOTICE_KEY)
+}
+
 export const sessionQueryOptions = queryOptions<User | null>({
   queryKey: ['session'],
   queryFn: ({ signal }) => fetchSession(signal),

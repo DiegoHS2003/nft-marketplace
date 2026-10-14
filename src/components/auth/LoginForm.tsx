@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { Eye, EyeOff } from 'lucide-react'
 import { login } from '@/api/auth'
 import { mergeGuestCart } from '@/api/cart'
-import { startSession } from '@/lib/auth'
+import { clearSessionExpiredNotice, hasSessionExpiredNotice, startSession } from '@/lib/auth'
 import { SocialButtons } from './SocialButtons'
 import type { ApiError } from '@/types/api'
 
@@ -20,6 +20,10 @@ export function LoginForm({ redirect }: Props) {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [sessionExpired] = useState(hasSessionExpiredNotice)
+  useEffect(() => {
+    if (sessionExpired) clearSessionExpiredNotice()
+  }, [sessionExpired])
 
   const mutation = useMutation({
     mutationFn: login,
@@ -45,6 +49,12 @@ export function LoginForm({ redirect }: Props) {
 
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-3">
+      {sessionExpired && (
+        <p role="status" className="text-sm text-kurio-text-secondary">
+          Sua sessão expirou. Entre novamente para continuar.
+        </p>
+      )}
+
       <label htmlFor="email">E-mail</label>
       <input
         id="email"

@@ -19,3 +19,19 @@ api.interceptors.request.use((config) => {
   config.headers['X-Guest-Id'] = getGuestId()
   return config
 })
+
+// quem sabe encerrar a sessão e redirecionar é o main.tsx (tem acesso ao QueryClient e ao router)
+let onSessionExpired: (() => void) | null = null
+export function setSessionExpiredHandler(handler: () => void) {
+  onSessionExpired = handler
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401 && error.response.data?.code === 'session_expired') {
+      onSessionExpired?.()
+    }
+    return Promise.reject(error)
+  },
+)
