@@ -1,6 +1,6 @@
 import { http, HttpResponse, delay } from 'msw'
-import type { ApiError, NftListResponse } from '@/types/api'
-import { db, ready, saveCarts, saveSessions, sha256 } from './db'
+import type { ApiError, CreateOrderBody, NftListResponse, Order } from '@/types/api'
+import { db, ready, saveCarts, saveNfts, saveOrders, saveSessions, sha256, type StoredOrder } from './db'
 
 const err = (status: number, code: string, message: string, fields?: Record<string, string>) =>
   HttpResponse.json<ApiError>({ code, message, fields }, { status })
@@ -46,9 +46,14 @@ function buildCart(key: string) {
   const subtotal = items.reduce((sum, i) => sum + toUnits(i.nft.price) * BigInt(i.quantity), 0n)
   const discount = raw.coupon ? (subtotal * 10n) / 100n : 0n
   const networkFee = items.length ? toUnits('0.002') : 0n
+  const quoteId = [
+    ...items.map((i) => `${i.nft.id}:${i.nft.price}:${i.nft.version}:${i.quantity}`),
+    raw.coupon ?? '-',
+  ].join('|')
   return {
     items,
     coupon: raw.coupon,
+    quoteId,
     subtotal: formatUnits(subtotal),
     discount: formatUnits(discount),
     networkFee: formatUnits(networkFee),
@@ -57,6 +62,49 @@ function buildCart(key: string) {
 }
 
 const noIdentity = () => err(400, 'missing_identity', 'Identificação do carrinho ausente')
+
+const scenario = () => localStorage.getItem('kurio:mock-scenario') ?? 'default'
+
+function toOrder(stored: StoredOrder): Order {
+  const { userId, idempotencyKey, payloadHash, confirmAt, outcome, cartLines, ...order } = stored
+  return order
+}
+
+// Resolve o pedido pendente quando chega a hora; só na confirmação mexe em estoque e carrinho
+function settleOrder(order: StoredOrder) {
+  if (order.status !== 'pending' || Date.now() < order.confirmAt) return
+
+  if (order.outcome === 'confirmed') {
+    order.status = 'confirmed'
+    order.txHash = '0x' + order.id.replace(/-/g, '').padEnd(64, '0')
+    for (const line of order.cartLines) {
+      const nft = db.nfts.find((n) => n.id === line.nftId)
+      if (nft) {
+        nft.editionsAvailable = Math.max(0, nft.editionsAvailable - line.quantity)
+        nft.version += 1
+      }
+    }
+    const cartId = `u:${order.userId}`
+    const cart = db.carts.get(cartId)
+    if (cart) {
+      cart.items = cart.items.flatMap((i) => {
+        const bought = order.cartLines.find((l) => l.nftId === i.nftId)
+        if (!bought) return [i]
+        const left = i.quantity - bought.quantity
+        return left > 0 ? [{ ...i, quantity: left }] : []
+      })
+      if (cart.items.length === 0) cart.coupon = null
+      db.carts.set(cartId, cart)
+    }
+    saveNfts()
+    saveCarts()
+  } else {
+    order.status = 'refused'
+    order.refusalReason = 'Pagamento recusado pela carteira'
+  }
+  order.version += 1
+  saveOrders()
+}
 
 export const handlers = [
   http.post('/api/auth/login', async ({ request }) => {
@@ -278,5 +326,104 @@ export const handlers = [
       saveCarts()
     }
     return HttpResponse.json(buildCart(userKey))
+  }),
+    http.get('/api/wallets', async ({ request }) => {
+    await ready
+    await delay(200)
+    const auth = currentUser(request)
+    if (!auth) return err(401, 'session_expired', 'Sessão inválida ou expirada')
+    const wallets = db.wallets.filter((w) => w.userId === auth.user.id).map(({ userId, ...w }) => w)
+    return HttpResponse.json(wallets)
+  }),
+
+  http.post('/api/orders', async ({ request }) => {
+    await ready
+    await delay(400)
+    const auth = currentUser(request)
+    if (!auth) return err(401, 'session_expired', 'Sessão inválida ou expirada')
+    const key = request.headers.get('Idempotency-Key')
+    if (!key) return err(400, 'missing_idempotency_key', 'Chave de idempotência ausente')
+
+    const body = (await request.json()) as CreateOrderBody
+    const payloadHash = await sha256(JSON.stringify(body))
+
+    // mesma chave + mesmo conteúdo = mesmo pedido; mesma chave + conteúdo diferente = conflito
+    const existing = [...db.orders.values()].find((o) => o.userId === auth.user.id && o.idempotencyKey === key)
+    if (existing) {
+      if (existing.payloadHash !== payloadHash) {
+        return err(409, 'idempotency_conflict', 'Esta chave já foi usada com outro conteúdo')
+      }
+      settleOrder(existing)
+      return HttpResponse.json(toOrder(existing))
+    }
+
+    const wallet = db.wallets.find((w) => w.id === body.walletId && w.userId === auth.user.id)
+    const fields: Record<string, string> = {}
+    if (!body.collector?.name?.trim()) fields.name = 'Informe seu nome'
+    if (!/^\S+@\S+\.\S+$/.test(body.collector?.email ?? '')) fields.email = 'E-mail inválido'
+    if (!wallet) fields.walletId = 'Selecione uma carteira'
+    else if (!wallet.networks.includes(body.network)) fields.network = 'Rede não suportada por esta carteira'
+    if (Object.keys(fields).length || !wallet) return err(422, 'validation_error', 'Dados inválidos', fields)
+
+    const cart = buildCart(`u:${auth.user.id}`)
+    if (cart.items.length === 0) return err(422, 'empty_cart', 'Seu carrinho está vazio')
+
+    // cotação desatualizada: devolve o carrinho novo e o usuário precisa confirmar de novo
+    if (body.quoteId !== cart.quoteId) {
+      return HttpResponse.json(
+        { code: 'quote_changed', message: 'Preços ou quantidades mudaram. Revise e confirme novamente.', cart },
+        { status: 409 },
+      )
+    }
+    const soldOut = cart.items.find((i) => i.quantity > i.nft.editionsAvailable)
+    if (soldOut) return err(409, 'stock_conflict', `${soldOut.nft.name}: edição indisponível`)
+
+    const id = crypto.randomUUID()
+    const order: StoredOrder = {
+      id,
+      status: 'pending',
+      userId: auth.user.id,
+      idempotencyKey: key,
+      payloadHash,
+      items: cart.items.map((i) => ({
+        nftId: i.nft.id,
+        name: i.nft.name,
+        image: i.nft.image,
+        unitPrice: i.nft.price,
+        quantity: i.quantity,
+      })),
+      subtotal: cart.subtotal,
+      discount: cart.discount,
+      networkFee: cart.networkFee,
+      total: cart.total,
+      network: body.network,
+      walletAddress: wallet.address,
+      txHash: null,
+      refusalReason: null,
+      createdAt: new Date().toISOString(),
+      version: 1,
+      confirmAt: Date.now() + 2500,
+      outcome: scenario() === 'payment_refused' ? 'refused' : 'confirmed',
+      cartLines: cart.items.map((i) => ({ nftId: i.nft.id, quantity: i.quantity })),
+    }
+    db.orders.set(id, order)
+    saveOrders()
+
+    // o pedido foi criado, mas a resposta "se perde": o cliente repete com a mesma chave
+    if (scenario() === 'order_timeout') return HttpResponse.error()
+
+    return HttpResponse.json(toOrder(order), { status: 201 })
+  }),
+
+  http.get('/api/orders/:id', async ({ request, params }) => {
+    await ready
+    await delay(200)
+    const auth = currentUser(request)
+    if (!auth) return err(401, 'session_expired', 'Sessão inválida ou expirada')
+    const order = db.orders.get(params.id as string)
+    if (!order) return err(404, 'not_found', 'Pedido não encontrado')
+    if (order.userId !== auth.user.id) return err(403, 'forbidden', 'Você não tem acesso a este pedido')
+    settleOrder(order)
+    return HttpResponse.json(toOrder(order))
   }),
 ]

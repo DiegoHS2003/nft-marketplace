@@ -1,4 +1,4 @@
-import type { Nft, Network } from '@/types/api'
+import type { Nft, Network, Wallet } from '@/types/api'
 
 const names = ['Emerald Ape', 'Sage Nomad', 'Neon Vessel', 'Cosmic Bloom', 'Violet Nomad', 'Ivory Baron', 'Golden Beat', 'Golden Signal']
 const collections = ['arte-digital', 'fotografia', 'musica', 'arte-3d', 'colecionaveis', 'generativa', 'jogos', 'avatares', 'utilidade']
@@ -22,4 +22,10 @@ export const seedNfts: Nft[] = Array.from({ length: 24 }, (_, i) => ({
 export const seedUsers = [
   { id: 'u1', name: 'Ana Colecionadora', email: 'ana@kurio.test', password: 'kurio123' },
   { id: 'u2', name: 'Bruno Colecionador', email: 'bruno@kurio.test', password: 'kurio123' },
+]
+
+export const seedWallets: (Wallet & { userId: string })[] = [
+  { id: 'w1', userId: 'u1', label: 'Carteira principal', address: '0xA11ce00000000000000000000000000000000001', kind: 'primary', networks: ['ethereum', 'polygon'] },
+  { id: 'w2', userId: 'u1', label: 'Carteira secundária', address: 'So1Ana000000000000000000000000000000000002', kind: 'secondary', networks: ['solana'] },
+  { id: 'w3', userId: 'u2', label: 'Carteira principal', address: '0xB0b0000000000000000000000000000000000003', kind: 'primary', networks: ['ethereum', 'polygon', 'solana'] },
 ]

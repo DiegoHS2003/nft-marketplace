@@ -47,8 +47,50 @@ export interface CartLine {
 export interface Cart {
   items: CartLine[]
   coupon: string | null
+  quoteId: string
   subtotal: string
   discount: string
   networkFee: string
   total: string
+}
+
+export interface Wallet {
+  id: string
+  label: string
+  address: string
+  kind: 'primary' | 'secondary'
+  networks: Network[]
+}
+
+export interface OrderItem {
+  nftId: string
+  name: string
+  image: string
+  unitPrice: string
+  quantity: number
+}
+
+export type OrderStatus = 'pending' | 'confirmed' | 'refused'
+
+export interface Order {
+  id: string
+  status: OrderStatus
+  items: OrderItem[]
+  subtotal: string
+  discount: string
+  networkFee: string
+  total: string
+  network: Network
+  walletAddress: string
+  txHash: string | null
+  refusalReason: string | null
+  createdAt: string
+  version: number
+}
+
+export interface CreateOrderBody {
+  quoteId: string
+  walletId: string
+  network: Network
+  collector: { name: string; email: string }
 }

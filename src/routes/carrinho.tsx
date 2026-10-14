@@ -109,6 +109,9 @@ function CartPage() {
             <dt>Taxa de rede</dt><dd className="text-right">{cart.networkFee} ETH</dd>
             <dt className="font-bold">Total</dt><dd className="text-right font-bold text-kurio-accent">{cart.total} ETH</dd>
           </dl>
+                    <Link to="/pagamento" className="mt-6 inline-block rounded bg-kurio-accent px-4 py-2 text-kurio-bg">
+            Ir para pagamento
+          </Link>
         </>
       )}
     </main>

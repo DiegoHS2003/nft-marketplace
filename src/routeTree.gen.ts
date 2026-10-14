@@ -14,7 +14,9 @@ import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as CarrinhoRouteImport } from './routes/carrinho'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthContaRouteImport } from './routes/_auth/conta'
+import { Route as AuthPagamentoRouteImport } from './routes/_auth/pagamento'
 import { Route as NftsIdRouteImport } from './routes/nfts.$id'
+import { Route as AuthPedidoIdRouteImport } from './routes/_auth/pedido.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,10 +42,20 @@ const AuthContaRoute = AuthContaRouteImport.update({
   path: '/conta',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthPagamentoRoute = AuthPagamentoRouteImport.update({
+  id: '/pagamento',
+  path: '/pagamento',
+  getParentRoute: () => AuthRoute,
+} as any)
 const NftsIdRoute = NftsIdRouteImport.update({
   id: '/nfts/$id',
   path: '/nfts/$id',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthPedidoIdRoute = AuthPedidoIdRouteImport.update({
+  id: '/pedido/$id',
+  path: '/pedido/$id',
+  getParentRoute: () => AuthRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -51,14 +63,18 @@ export interface FileRoutesByFullPath {
   '/carrinho': typeof CarrinhoRoute
   '/login': typeof LoginRoute
   '/conta': typeof AuthContaRoute
+  '/pagamento': typeof AuthPagamentoRoute
   '/nfts/$id': typeof NftsIdRoute
+  '/pedido/$id': typeof AuthPedidoIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/carrinho': typeof CarrinhoRoute
   '/login': typeof LoginRoute
   '/conta': typeof AuthContaRoute
+  '/pagamento': typeof AuthPagamentoRoute
   '/nfts/$id': typeof NftsIdRoute
+  '/pedido/$id': typeof AuthPedidoIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -67,13 +83,29 @@ export interface FileRoutesById {
   '/carrinho': typeof CarrinhoRoute
   '/login': typeof LoginRoute
   '/_auth/conta': typeof AuthContaRoute
+  '/_auth/pagamento': typeof AuthPagamentoRoute
   '/nfts/$id': typeof NftsIdRoute
+  '/_auth/pedido/$id': typeof AuthPedidoIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/carrinho' | '/login' | '/conta' | '/nfts/$id'
+  fullPaths:
+    | '/'
+    | '/carrinho'
+    | '/login'
+    | '/conta'
+    | '/pagamento'
+    | '/nfts/$id'
+    | '/pedido/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/carrinho' | '/login' | '/conta' | '/nfts/$id'
+  to:
+    | '/'
+    | '/carrinho'
+    | '/login'
+    | '/conta'
+    | '/pagamento'
+    | '/nfts/$id'
+    | '/pedido/$id'
   id:
     | '__root__'
     | '/'
@@ -81,7 +113,9 @@ export interface FileRouteTypes {
     | '/carrinho'
     | '/login'
     | '/_auth/conta'
+    | '/_auth/pagamento'
     | '/nfts/$id'
+    | '/_auth/pedido/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -129,6 +163,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthContaRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_auth/pagamento': {
+      id: '/_auth/pagamento'
+      path: '/pagamento'
+      fullPath: '/pagamento'
+      preLoaderRoute: typeof AuthPagamentoRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/nfts/$id': {
       id: '/nfts/$id'
       path: '/nfts/$id'
@@ -136,15 +177,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NftsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_auth/pedido/$id': {
+      id: '/_auth/pedido/$id'
+      path: '/pedido/$id'
+      fullPath: '/pedido/$id'
+      preLoaderRoute: typeof AuthPedidoIdRouteImport
+      parentRoute: typeof AuthRoute
+    }
   }
 }
 
 interface AuthRouteChildren {
   AuthContaRoute: typeof AuthContaRoute
+  AuthPagamentoRoute: typeof AuthPagamentoRoute
+  AuthPedidoIdRoute: typeof AuthPedidoIdRoute
 }
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthContaRoute: AuthContaRoute,
+  AuthPagamentoRoute: AuthPagamentoRoute,
+  AuthPedidoIdRoute: AuthPedidoIdRoute,
 }
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
