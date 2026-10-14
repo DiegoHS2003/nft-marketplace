@@ -1,12 +1,7 @@
 import { queryOptions, useMutation } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { api } from '@/lib/api'
-import type { CreateOrderBody, Order, Wallet } from '@/types/api'
-
-export const walletsQueryOptions = queryOptions({
-  queryKey: ['wallets'],
-  queryFn: async ({ signal }) => (await api.get<Wallet[]>('/wallets', { signal })).data,
-})
+import type { CreateOrderBody, Order } from '@/types/api'
 
 export const orderQueryOptions = (id: string) =>
   queryOptions({

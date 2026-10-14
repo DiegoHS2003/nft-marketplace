@@ -1,6 +1,29 @@
 import { http, HttpResponse, delay } from 'msw'
-import type { ApiError, CreateOrderBody, Nft, NftFacets, NftListResponse, Order } from '@/types/api'
-import { db, ready, saveCarts, saveFavorites, saveNfts, saveOrders, saveSessions, saveUsers, sha256, type StoredOrder } from './db'
+import type {
+  ApiError,
+  CreateOrderBody,
+  Network,
+  Nft,
+  NftFacets,
+  NftListResponse,
+  Order,
+  PasswordChangeBody,
+  ProfileUpdateBody,
+  WalletInput,
+} from '@/types/api'
+import {
+  db,
+  ready,
+  saveCarts,
+  saveFavorites,
+  saveNfts,
+  saveOrders,
+  saveSessions,
+  saveUsers,
+  saveWallets,
+  sha256,
+  type StoredOrder,
+} from './db'
 import { emitNftUpdated, emitOrderUpdated } from './realtime'
 
 const err = (status: number, code: string, message: string, fields?: Record<string, string>) =>
@@ -20,7 +43,18 @@ function currentUser(request: Request) {
   return user ? { user, token: token! } : null
 }
 
-const publicUser = ({ id, name, email }: { id: string; name: string; email: string }) => ({ id, name, email })
+const publicUser = ({ id, name, email, avatar }: { id: string; name: string; email: string; avatar?: string | null }) => ({
+  id,
+  name,
+  email,
+  avatar: avatar ?? null,
+})
+
+const NETWORKS: Network[] = ['ethereum', 'polygon', 'solana']
+const MAX_AVATAR_BYTES = 200 * 1024
+
+// aceita endereços no formato usado pelas fixtures (0x... ou base58), sem exigir um checksum real
+const isValidAddress = (v: string) => /^[a-zA-Z0-9]{6,64}$/.test(v.trim())
 
 const formatUnits = (v: bigint) => {
   const s = v.toString().padStart(19, '0')
@@ -170,6 +204,64 @@ export const handlers = [
       db.sessions.delete(auth.token)
       saveSessions()
     }
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.get('/api/profile', async ({ request }) => {
+    await ready
+    await delay(200)
+    const auth = currentUser(request)
+    if (!auth) return err(401, 'session_expired', 'Sessão inválida ou expirada')
+    return HttpResponse.json(publicUser(auth.user))
+  }),
+
+  http.patch('/api/profile', async ({ request }) => {
+    await ready
+    await delay(300)
+    const auth = currentUser(request)
+    if (!auth) return err(401, 'session_expired', 'Sessão inválida ou expirada')
+    const body = (await request.json()) as ProfileUpdateBody
+
+    const fields: Record<string, string> = {}
+    if (!body.name?.trim()) fields.name = 'Informe seu nome'
+    if (!/^\S+@\S+\.\S+$/.test(body.email ?? '')) fields.email = 'E-mail inválido'
+    if (Object.keys(fields).length) return err(422, 'validation_error', 'Dados inválidos', fields)
+
+    const normalizedEmail = body.email.trim().toLowerCase()
+    if (db.users.some((u) => u.id !== auth.user.id && u.email === normalizedEmail)) {
+      return err(409, 'email_taken', 'Este e-mail já está cadastrado', { email: 'E-mail já cadastrado' })
+    }
+
+    if (body.avatar) {
+      if (!/^data:image\//.test(body.avatar)) return err(422, 'validation_error', 'Dados inválidos', { avatar: 'Formato de imagem inválido' })
+      if (body.avatar.length > MAX_AVATAR_BYTES) {
+        return err(422, 'validation_error', 'Dados inválidos', { avatar: 'A imagem precisa ter até 200 KB' })
+      }
+      auth.user.avatar = body.avatar
+    } else if (body.avatar === null) {
+      auth.user.avatar = null
+    }
+
+    auth.user.name = body.name.trim()
+    auth.user.email = normalizedEmail
+    saveUsers()
+    return HttpResponse.json(publicUser(auth.user))
+  }),
+
+  http.post('/api/profile/password', async ({ request }) => {
+    await ready
+    await delay(300)
+    const auth = currentUser(request)
+    if (!auth) return err(401, 'session_expired', 'Sessão inválida ou expirada')
+    const { currentPassword, newPassword } = (await request.json()) as PasswordChangeBody
+
+    const fields: Record<string, string> = {}
+    if (auth.user.passwordHash !== (await sha256(currentPassword ?? ''))) fields.currentPassword = 'Senha atual incorreta'
+    if ((newPassword ?? '').length < 8) fields.newPassword = 'A nova senha precisa ter ao menos 8 caracteres'
+    if (Object.keys(fields).length) return err(422, 'validation_error', 'Dados inválidos', fields)
+
+    auth.user.passwordHash = await sha256(newPassword)
+    saveUsers()
     return new HttpResponse(null, { status: 204 })
   }),
 
@@ -387,6 +479,77 @@ export const handlers = [
     await delay(200)
     const auth = currentUser(request)
     if (!auth) return err(401, 'session_expired', 'Sessão inválida ou expirada')
+    const wallets = db.wallets.filter((w) => w.userId === auth.user.id).map(({ userId, ...w }) => w)
+    return HttpResponse.json(wallets)
+  }),
+
+  http.post('/api/wallets', async ({ request }) => {
+    await ready
+    await delay(300)
+    const auth = currentUser(request)
+    if (!auth) return err(401, 'session_expired', 'Sessão inválida ou expirada')
+    const body = (await request.json()) as WalletInput
+
+    const fields: Record<string, string> = {}
+    if (!body.label?.trim()) fields.label = 'Informe um apelido para a carteira'
+    if (!isValidAddress(body.address ?? '')) fields.address = 'Endereço de carteira inválido'
+    if (body.kind !== 'primary' && body.kind !== 'secondary') fields.kind = 'Selecione o tipo de carteira'
+    if (!body.networks?.length || !body.networks.every((n) => NETWORKS.includes(n))) {
+      fields.networks = 'Selecione ao menos uma rede'
+    }
+    if (Object.keys(fields).length) return err(422, 'validation_error', 'Dados inválidos', fields)
+
+    if (body.kind === 'primary' && db.wallets.some((w) => w.userId === auth.user.id && w.kind === 'primary')) {
+      return err(409, 'wallet_primary_conflict', 'Você já tem uma carteira principal', {
+        kind: 'Você já tem uma carteira principal. Edite-a ou cadastre esta como secundária.',
+      })
+    }
+
+    db.wallets.push({
+      id: crypto.randomUUID(),
+      userId: auth.user.id,
+      label: body.label.trim(),
+      address: body.address.trim(),
+      kind: body.kind,
+      networks: body.networks,
+    })
+    saveWallets()
+    const wallets = db.wallets.filter((w) => w.userId === auth.user.id).map(({ userId, ...w }) => w)
+    return HttpResponse.json(wallets, { status: 201 })
+  }),
+
+  http.patch('/api/wallets/:id', async ({ request, params }) => {
+    await ready
+    await delay(300)
+    const auth = currentUser(request)
+    if (!auth) return err(401, 'session_expired', 'Sessão inválida ou expirada')
+    const wallet = db.wallets.find((w) => w.id === params.id && w.userId === auth.user.id)
+    if (!wallet) return err(404, 'not_found', 'Carteira não encontrada')
+
+    const body = (await request.json()) as WalletInput
+    const fields: Record<string, string> = {}
+    if (!body.label?.trim()) fields.label = 'Informe um apelido para a carteira'
+    if (!isValidAddress(body.address ?? '')) fields.address = 'Endereço de carteira inválido'
+    if (body.kind !== 'primary' && body.kind !== 'secondary') fields.kind = 'Selecione o tipo de carteira'
+    if (!body.networks?.length || !body.networks.every((n) => NETWORKS.includes(n))) {
+      fields.networks = 'Selecione ao menos uma rede'
+    }
+    if (Object.keys(fields).length) return err(422, 'validation_error', 'Dados inválidos', fields)
+
+    if (
+      body.kind === 'primary' &&
+      db.wallets.some((w) => w.userId === auth.user.id && w.kind === 'primary' && w.id !== wallet.id)
+    ) {
+      return err(409, 'wallet_primary_conflict', 'Você já tem uma carteira principal', {
+        kind: 'Você já tem uma carteira principal. Edite-a ou cadastre esta como secundária.',
+      })
+    }
+
+    wallet.label = body.label.trim()
+    wallet.address = body.address.trim()
+    wallet.kind = body.kind
+    wallet.networks = body.networks
+    saveWallets()
     const wallets = db.wallets.filter((w) => w.userId === auth.user.id).map(({ userId, ...w }) => w)
     return HttpResponse.json(wallets)
   }),

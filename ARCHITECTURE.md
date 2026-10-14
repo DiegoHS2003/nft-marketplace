@@ -77,3 +77,31 @@ O enunciado pede quantidade como funcionalidade obrigatória do detalhe, e o end
 - Só autenticado favorita: o coração do visitante manda pro login (`/login?redirect=/nfts/:id`) e o próprio redirect devolve pro detalhe depois de entrar.
 - Atualização otimista com rollback: o coração muda na hora, e se a API recusar (cenário `favorites_fail` em `kurio:mock-scenario`, mesmo padrão dos outros cenários) o estado volta e aparece um aviso `role="alert"`.
 - Dois botões de favoritar no DOM (ícone circular sobre a imagem no mobile, botão com texto ao lado de "Comprar" no desktop) — só um fica visível por vez via classes `md:hidden`/`hidden md:inline-flex`, igual ao padrão que já existia na busca do Header/Início.
+
+## Etapa 5 — Perfil e carteiras
+
+### Nomes dos prints do Figma
+
+Os prints indicados no enunciado (`design/perfil-desktop.png` e `design/carteiras-desktop.png`) não existem com esse nome no repositório — os arquivos em `design/` são só capturas de tela sequenciais (`Captura de Tela ... .png`). Identifiquei os frames corretos pelo rótulo "Desktop / ..." dentro de cada imagem: "Desktop / Perfil do Colecionador" (13.56.09) e "Desktop / Carteiras" (13.56.51).
+
+### Desvios do Figma
+
+- **Perfil só tem Nome de exibição e E-mail como campos editáveis.** O Figma desenha também "Nome de usuário", "Nome ENS" e "Apelido da carteira" dentro do formulário de perfil, mas o enunciado desta etapa define o contrato como "GET e PATCH /api/profile (nome e e-mail...)" — sem esses três campos. Inventá-los na tela sem endpoint por trás seria dado fictício na UI (regra do projeto). Mesmo padrão já registrado na Etapa 4 para a tela de Pagamento, que tem o mesmo vazamento de campos sem contrato.
+- **Dois botões de salvar, não um.** No Figma, "Dados do perfil" e "Alterar senha" dividem a mesma tela com um único botão "Salvar" no fim. Como são duas mutations diferentes (`PATCH /api/profile` e `POST /api/profile/password`), cada uma com seus próprios erros de campo, separei em dois formulários com dois submits independentes — assim um erro de senha não bloqueia salvar nome/e-mail e vice-versa, e cada mensagem de erro fica associada ao campo certo.
+- **Barra lateral "Meu perfil": só "Dados do perfil" e "Carteiras" têm comportamento real.** "Atividade", "Lista de interesse", "Ofertas", "Arquivos baixados" e "Suporte" não fazem parte do escopo da entrega (mesma lista de páginas excluídas do enunciado, seção 3) — viram links reais para `/fora-do-escopo`, igual ao tratamento que "Mercado/Criadores/Aprenda" já recebem no Header (Etapa 1).
+- **"Sair" não foi duplicado na barra lateral.** O Figma mostra "Sair" no menu do perfil, mas o Header já tem um botão "Sair" (usado por `tests/e2e/auth.spec.ts`). Repetir o mesmo texto em dois controles da mesma página deixaria `getByRole('button', { name: 'Sair' })` ambíguo nos testes; a ação de logout já existe e funciona a partir do Header em qualquer tela.
+- **Formulário de carteira tem só Apelido, Endereço e Rede(s).** O Figma mistura campos de perfil (nome de exibição, nome do perfil, e-mail, ENS, código de indicação) dentro do formulário de carteira — o mesmo vazamento de campos sem contrato já visto no formulário de Pagamento. Implementei só o que o `Wallet` do contrato tem: `label`, `address`, `kind`, `networks`.
+- **Sem campo "Tipo de carteira" (select).** A página já separa fisicamente "Carteira principal" de "Carteira secundária" em duas seções (como o Figma desenha), então o tipo já está implícito em qual formulário o usuário preenche — um select redundante só duplicaria essa escolha.
+- **Rede vira caixas de seleção (múltipla), não um único select.** `Wallet.networks` já é uma lista (uma carteira pode valer para mais de uma rede — é assim que a tela de Pagamento filtra as opções de rede disponíveis para a carteira escolhida); um `<select>` de valor único quebraria isso.
+- **Validação de endereço é só de formato** (alfanumérico, 6 a 64 caracteres), sem checksum de blockchain de verdade — consistente com o resto do mock, que simula a infraestrutura sem validar criptografia real.
+- **Sem frame mobile para Perfil/Carteiras no Figma** (só Desktop). A barra lateral vira uma lista horizontal com rolagem abaixo de `md`, testada em 390px.
+
+### Contratos novos
+
+`GET/PATCH /api/profile` — `PATCH` recebe `{ name, email, avatar? }`; valida nome e e-mail (422 por campo) e e-mail duplicado de outro usuário (409, campo `email`). Avatar é opcional: `string` (data URL, até 200 KB, 422 se maior ou formato inválido) ou `null` para remover.
+
+`POST /api/profile/password` — recebe `{ currentPassword, newPassword }`; 422 por campo se a senha atual não bate ou a nova tem menos de 8 caracteres. Só a hash da nova senha é persistida.
+
+`POST/PATCH /api/wallets[/:id]` — recebem `{ label, address, kind, networks }`; 422 por campo (apelido vazio, endereço inválido, rede vazia) e 409 (`wallet_primary_conflict`) se tentar ter duas carteiras `principal` ao mesmo tempo. Devolvem a lista completa de carteiras do usuário (mesmo formato do `GET`), para o cliente atualizar o cache com `setQueryData` direto, sem round-trip extra — mesmo padrão já usado em `/api/favorites` e `/api/cart/*`.
+
+Carteiras agora persistem em `localStorage` (`kurio:mock-wallets`), igual a NFTs/usuários/favoritos, e são limpas por `resetDb()`/`__kurioMock.reset()`.

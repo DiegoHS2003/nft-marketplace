@@ -32,6 +32,18 @@ export interface User {
   id: string
   name: string
   email: string
+  avatar?: string | null
+}
+
+export interface ProfileUpdateBody {
+  name: string
+  email: string
+  avatar?: string | null
+}
+
+export interface PasswordChangeBody {
+  currentPassword: string
+  newPassword: string
 }
 
 export interface SessionResponse {
@@ -62,6 +74,13 @@ export interface Cart {
 
 export interface Wallet {
   id: string
+  label: string
+  address: string
+  kind: 'primary' | 'secondary'
+  networks: Network[]
+}
+
+export interface WalletInput {
   label: string
   address: string
   kind: 'primary' | 'secondary'
