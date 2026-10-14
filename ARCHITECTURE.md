@@ -53,3 +53,27 @@ Usuários cadastrados por `POST /api/auth/register` só existiam na memória da 
 O modal usa `@base-ui/react/dialog` (foco preso automaticamente, `role="dialog"`, `aria-modal="true"`, título associado via `aria-labelledby`, Esc fecha). Dois cuidados extras:
 - **Fechar com Esc/X não pode cair numa aba em branco.** `window.history.length` conta a entrada inicial em branco do navegador, então não dá pra usar como sinal de "existe uma página anterior de verdade". Criado um contador próprio (`src/lib/navigationHistory.ts`) que conta quantas localizações o roteador já resolveu nesta sessão; só volta no histórico se houver mais de uma, senão manda pra Início.
 - **Foco volta pro elemento que abriu o diálogo** de graça, porque o Header (com o link "Entrar") fica montado durante toda a navegação (vive no layout raiz, fora do `<Outlet/>`) — o Base UI Dialog restaura o foco pro último elemento focado antes de abrir, que já é esse link.
+
+## Etapa 4 — Detalhe, carrinho, pagamento, confirmação e favoritos
+
+### Desvios do Figma
+
+- **Galeria do detalhe tem uma imagem só.** O Figma mostra 4 miniaturas + imagem grande, mas o contrato de `Nft` só tem um campo `image`. Reaproveitar a mesma imagem em miniaturas fictícias seria dado fictício na UI (proibido pela regra do projeto); fica só a imagem grande.
+- **Sem nota/avaliações ("★★★★★ 19 avaliações").** Não existe esse campo no contrato de `Nft` nem no enunciado — não inventei número.
+- **Sem "Mais desta coleção" e sem abas "Detalhes/Avaliações" no detalhe.** Não fazem parte das funcionalidades obrigatórias do enunciado para essa tela (galeria, informações, edição, quantidade, favoritos, compra); ficaram de fora para não alterar lógica/escopo nesta etapa, que era pra ser só visual.
+- **Pagamento (desktop) não tem o formulário extenso de perfil do Figma** (nome de usuário, código de indicação, ENS etc.) nem a lista de carteiras em rádio. O formulário atual usa exatamente os campos que a API já valida (nome, e-mail, carteira, rede) — criar campos novos sem contrato por trás seria dado fictício, e trocar os `<select>` por uma lista de rádios quebraria `getByLabel('Carteira').selectOption(...)` dos testes existentes. Os `<select>` ficaram, só com visual novo.
+- **Botão "Ir para pagamento" (carrinho) não foi renomeado para "Conectar e finalizar" (Figma).** O clique aqui só navega pra tela de pagamento — conectar carteira continua acontecendo na tela seguinte. Trocar o texto sem trocar o comportamento ia descrever uma ação que ainda não acontece, e esse texto é usado em teste (`checkout.spec.ts`); mantive.
+- **Confirmação de pedido não tem frame mobile no Figma** (só Desktop 1440). Adaptei empilhando a grade de metadados (ID da transação/Data/Total/Carteira) de 4 para 2 colunas abaixo de `sm`, mesmo cartão centralizado nos três tamanhos.
+- **"Ver no Etherscan" é só decorativo** (`disabled`, `aria-disabled`, `title`), no mesmo padrão já usado em "Esqueceu a senha?" — o enunciado diz que "links de exploração são simulados", e simular um link clicável pra lugar nenhum pareceria sucesso funcional falso.
+
+### Quantidade no detalhe do NFT
+
+O enunciado pede quantidade como funcionalidade obrigatória do detalhe, e o endpoint `POST /api/cart/items` já aceita e valida `quantity` (contra `editionsAvailable`) desde a etapa de carrinho — só a interface não deixava escolher. Adicionei um stepper (− / +) que limita entre 1 e `editionsAvailable` e passa esse valor pro `add.mutate` que já existia. Não criei contrato novo nem mudei o handler do mock, só completei a ligação entre uma interação do Figma e uma capacidade que a API já tinha.
+
+### Favoritos
+
+- Novos endpoints no mock: `GET/POST /api/favorites` e `DELETE /api/favorites/:nftId`, por usuário (`db.favorites: Map<userId, nftId[]>`), persistidos em `localStorage` (`kurio:mock-favorites`) e limpos por `resetDb()`/`__kurioMock.reset()`.
+- A consulta `['favorites']` não está na lista `PUBLIC_KEYS` de `src/lib/auth.ts`, então já é tratada como cache privado e some na troca de sessão/logout sem precisar de nenhuma mudança ali.
+- Só autenticado favorita: o coração do visitante manda pro login (`/login?redirect=/nfts/:id`) e o próprio redirect devolve pro detalhe depois de entrar.
+- Atualização otimista com rollback: o coração muda na hora, e se a API recusar (cenário `favorites_fail` em `kurio:mock-scenario`, mesmo padrão dos outros cenários) o estado volta e aparece um aviso `role="alert"`.
+- Dois botões de favoritar no DOM (ícone circular sobre a imagem no mobile, botão com texto ao lado de "Comprar" no desktop) — só um fica visível por vez via classes `md:hidden`/`hidden md:inline-flex`, igual ao padrão que já existia na busca do Header/Início.

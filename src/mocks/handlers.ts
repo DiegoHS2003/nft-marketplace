@@ -1,6 +1,6 @@
 import { http, HttpResponse, delay } from 'msw'
 import type { ApiError, CreateOrderBody, Nft, NftFacets, NftListResponse, Order } from '@/types/api'
-import { db, ready, saveCarts, saveNfts, saveOrders, saveSessions, saveUsers, sha256, type StoredOrder } from './db'
+import { db, ready, saveCarts, saveFavorites, saveNfts, saveOrders, saveSessions, saveUsers, sha256, type StoredOrder } from './db'
 import { emitNftUpdated, emitOrderUpdated } from './realtime'
 
 const err = (status: number, code: string, message: string, fields?: Record<string, string>) =>
@@ -473,6 +473,40 @@ export const handlers = [
     if (scenario() === 'order_timeout') return HttpResponse.error()
 
     return HttpResponse.json(toOrder(order), { status: 201 })
+  }),
+
+  http.get('/api/favorites', async ({ request }) => {
+    await ready
+    await delay(200)
+    const auth = currentUser(request)
+    if (!auth) return err(401, 'session_expired', 'Sessão inválida ou expirada')
+    return HttpResponse.json(db.favorites.get(auth.user.id) ?? [])
+  }),
+
+  http.post('/api/favorites', async ({ request }) => {
+    await ready
+    await delay(300)
+    const auth = currentUser(request)
+    if (!auth) return err(401, 'session_expired', 'Sessão inválida ou expirada')
+    const { nftId } = (await request.json()) as { nftId: string }
+    if (!db.nfts.some((n) => n.id === nftId)) return err(404, 'not_found', 'NFT não encontrado')
+    if (scenario() === 'favorites_fail') return err(500, 'favorites_failed', 'Não foi possível salvar o favorito')
+    const current = db.favorites.get(auth.user.id) ?? []
+    if (!current.includes(nftId)) db.favorites.set(auth.user.id, [...current, nftId])
+    saveFavorites()
+    return HttpResponse.json(db.favorites.get(auth.user.id) ?? [], { status: 201 })
+  }),
+
+  http.delete('/api/favorites/:nftId', async ({ request, params }) => {
+    await ready
+    await delay(300)
+    const auth = currentUser(request)
+    if (!auth) return err(401, 'session_expired', 'Sessão inválida ou expirada')
+    if (scenario() === 'favorites_fail') return err(500, 'favorites_failed', 'Não foi possível remover o favorito')
+    const current = db.favorites.get(auth.user.id) ?? []
+    db.favorites.set(auth.user.id, current.filter((id) => id !== params.nftId))
+    saveFavorites()
+    return HttpResponse.json(db.favorites.get(auth.user.id) ?? [])
   }),
 
   http.get('/api/orders/:id', async ({ request, params }) => {

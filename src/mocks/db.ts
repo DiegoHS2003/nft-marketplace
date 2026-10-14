@@ -27,6 +27,7 @@ const CARTS_KEY = 'kurio:mock-carts'
 const ORDERS_KEY = 'kurio:mock-orders'
 const NFTS_KEY = 'kurio:mock-nfts'
 const USERS_KEY = 'kurio:mock-users'
+const FAVORITES_KEY = 'kurio:mock-favorites'
 
 function loadMap<T>(key: string): Map<string, T> {
   try {
@@ -58,6 +59,7 @@ export const db = {
   sessions: loadMap<string>(SESSIONS_KEY), // token -> userId
   carts: loadMap<StoredCart>(CARTS_KEY), // 'u:<userId>' ou 'g:<guestId>'
   orders: loadMap<StoredOrder>(ORDERS_KEY), // orderId -> pedido
+  favorites: loadMap<string[]>(FAVORITES_KEY), // userId -> nftIds
 }
 
 export const saveSessions = () => localStorage.setItem(SESSIONS_KEY, JSON.stringify([...db.sessions]))
@@ -65,6 +67,7 @@ export const saveCarts = () => localStorage.setItem(CARTS_KEY, JSON.stringify([.
 export const saveOrders = () => localStorage.setItem(ORDERS_KEY, JSON.stringify([...db.orders]))
 export const saveNfts = () => localStorage.setItem(NFTS_KEY, JSON.stringify(db.nfts))
 export const saveUsers = () => localStorage.setItem(USERS_KEY, JSON.stringify(db.users))
+export const saveFavorites = () => localStorage.setItem(FAVORITES_KEY, JSON.stringify([...db.favorites]))
 
 function loadUsers(): StoredUser[] | null {
   try {
@@ -92,12 +95,15 @@ export const ready = seed()
 export async function resetDb() {
   localStorage.removeItem(NFTS_KEY)
   localStorage.removeItem(USERS_KEY)
+  localStorage.removeItem(FAVORITES_KEY)
   await seed()
   db.nfts = structuredClone(seedNfts)
   db.sessions = new Map()
   db.carts = new Map()
   db.orders = new Map()
+  db.favorites = new Map()
   saveSessions()
   saveCarts()
   saveOrders()
+  saveFavorites()
 }

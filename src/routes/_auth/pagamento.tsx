@@ -77,92 +77,113 @@ function Checkout() {
 
   if (cart && cart.items.length === 0) {
     return (
-      <main className="mx-auto max-w-3xl p-6">
-        <p>Seu carrinho está vazio. <Link to="/" className="underline">Ver catálogo</Link></p>
+      <main className="mx-auto max-w-3xl p-6 text-center">
+        <p>Seu carrinho está vazio. <Link to="/" className="text-kurio-text-accent underline">Ver catálogo</Link></p>
       </main>
     )
   }
 
-  const input = 'rounded border border-kurio-border bg-kurio-surface px-3 py-2'
+  const input = 'rounded-lg border border-kurio-border bg-kurio-ink-soft px-3 py-2 text-sm'
+  const card = 'rounded-2xl bg-kurio-card p-5'
 
   return (
-    <main className="mx-auto grid max-w-4xl gap-8 p-6 md:grid-cols-2">
-      <form onSubmit={onSubmit} className="flex flex-col gap-3">
-        <h1 className="text-2xl">Pagamento</h1>
+    <main className="mx-auto max-w-5xl px-4 pb-6 pt-4 sm:px-6 md:pt-8">
+      <h1 className="mb-6 text-2xl font-bold text-kurio-text">Pagamento</h1>
 
-        <label htmlFor="name">Nome do colecionador</label>
-        <input id="name" required value={name} onChange={(e) => setName(e.target.value)}
-          aria-invalid={!!fields.name} className={input} />
-        {fields.name && <p role="alert" className="text-sm">{fields.name}</p>}
+      <div className="grid gap-6 md:grid-cols-[1fr_340px] md:items-start">
+        <form onSubmit={onSubmit} className="order-2 flex flex-col gap-6 md:order-1">
+          <div className={card}>
+            <h2 className="mb-4 text-lg font-bold text-kurio-text">Dados do colecionador</h2>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label htmlFor="name" className="mb-1 block text-sm text-kurio-text-secondary">Nome do colecionador</label>
+                <input id="name" required value={name} onChange={(e) => setName(e.target.value)}
+                  aria-invalid={!!fields.name} className={`w-full ${input}`} />
+                {fields.name && <p role="alert" className="mt-1 text-sm text-kurio-coral">{fields.name}</p>}
+              </div>
 
-        <label htmlFor="email">E-mail</label>
-        <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-          aria-invalid={!!fields.email} className={input} />
-        {fields.email && <p role="alert" className="text-sm">{fields.email}</p>}
-
-        <label htmlFor="wallet">Carteira</label>
-        <select id="wallet" required value={walletId} className={input}
-          onChange={(e) => { setWalletId(e.target.value); setNetwork('') }}>
-          <option value="">Selecione</option>
-          {wallets.map((w) => (
-            <option key={w.id} value={w.id}>{w.label} ({w.address.slice(0, 8)}…)</option>
-          ))}
-        </select>
-        {fields.walletId && <p role="alert" className="text-sm">{fields.walletId}</p>}
-
-        <label htmlFor="network">Rede</label>
-        <select id="network" required value={network} className={input} disabled={!wallet}
-          onChange={(e) => setNetwork(e.target.value as Network)}>
-          <option value="">Selecione</option>
-          {wallet?.networks.map((n) => <option key={n} value={n}>{n}</option>)}
-        </select>
-        {fields.network && <p role="alert" className="text-sm">{fields.network}</p>}
-
-        {stale && (
-          <div role="alert" className="rounded border border-kurio-accent p-3">
-            <p>Os valores do pedido mudaram desde a sua revisão. Confira o resumo e aceite os novos valores para continuar.</p>
-            <button type="button" onClick={() => cart && setReviewedQuote(cart.quoteId)} className="mt-2 underline">
-              Aceitar novos valores
-            </button>
+              <div>
+                <label htmlFor="email" className="mb-1 block text-sm text-kurio-text-secondary">E-mail</label>
+                <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+                  aria-invalid={!!fields.email} className={`w-full ${input}`} />
+                {fields.email && <p role="alert" className="mt-1 text-sm text-kurio-coral">{fields.email}</p>}
+              </div>
+            </div>
           </div>
-        )}
-        {apiError && !apiError.fields && apiError.code !== 'quote_changed' && (
-          <p role="alert">{apiError.message}</p>
-        )}
-        {networkFailure && (
-          <p role="alert">
-            Falha de conexão ao enviar o pedido. Tente de novo: ele não será criado duas vezes.
-          </p>
-        )}
 
-        <button disabled={create.isPending || !cart || stale}
-          className="rounded bg-kurio-accent px-4 py-2 text-kurio-bg disabled:opacity-50">
-          {create.isPending ? 'Enviando pedido...' : 'Confirmar compra'}
-        </button>
-      </form>
+          <div className={card}>
+            <h2 className="mb-4 text-lg font-bold text-kurio-text">Carteira e rede</h2>
+            <div className="flex flex-col gap-3">
+              <div>
+                <label htmlFor="wallet" className="mb-1 block text-sm text-kurio-text-secondary">Carteira</label>
+                <select id="wallet" required value={walletId} className={`w-full ${input}`}
+                  onChange={(e) => { setWalletId(e.target.value); setNetwork('') }}>
+                  <option value="">Selecione</option>
+                  {wallets.map((w) => (
+                    <option key={w.id} value={w.id}>{w.label} ({w.address.slice(0, 8)}…)</option>
+                  ))}
+                </select>
+                {fields.walletId && <p role="alert" className="mt-1 text-sm text-kurio-coral">{fields.walletId}</p>}
+              </div>
 
-      <section aria-label="Resumo do pedido">
-        <h2 className="mb-3 text-xl">Resumo</h2>
-        {cart && (
-          <>
-            <ul className="mb-4 flex flex-col gap-2">
-              {cart.items.map(({ nft, quantity }) => (
-                <li key={nft.id} className="flex justify-between">
-                  <span>{quantity}× {nft.name}</span>
-                  <span>{nft.price} ETH</span>
-                </li>
-              ))}
-            </ul>
-            <dl className="grid grid-cols-2 gap-1">
-              <dt>Subtotal</dt><dd className="text-right">{cart.subtotal} ETH</dd>
-              <dt>Desconto</dt><dd className="text-right">−{cart.discount} ETH</dd>
-              <dt>Taxa de rede</dt><dd className="text-right">{cart.networkFee} ETH</dd>
-              <dt className="font-bold">Total</dt>
-              <dd className="text-right font-bold text-kurio-accent">{cart.total} ETH</dd>
-            </dl>
-          </>
-        )}
-      </section>
+              <div>
+                <label htmlFor="network" className="mb-1 block text-sm text-kurio-text-secondary">Rede</label>
+                <select id="network" required value={network} className={`w-full ${input}`} disabled={!wallet}
+                  onChange={(e) => setNetwork(e.target.value as Network)}>
+                  <option value="">Selecione</option>
+                  {wallet?.networks.map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+                {fields.network && <p role="alert" className="mt-1 text-sm text-kurio-coral">{fields.network}</p>}
+              </div>
+            </div>
+          </div>
+
+          {stale && (
+            <div role="alert" className="rounded-xl border border-kurio-primary bg-kurio-card p-4 text-sm">
+              <p>Os valores do pedido mudaram desde a sua revisão. Confira o resumo e aceite os novos valores para continuar.</p>
+              <button type="button" onClick={() => cart && setReviewedQuote(cart.quoteId)} className="mt-2 font-bold text-kurio-text-accent underline">
+                Aceitar novos valores
+              </button>
+            </div>
+          )}
+          {apiError && !apiError.fields && apiError.code !== 'quote_changed' && (
+            <p role="alert" className="text-sm text-kurio-coral">{apiError.message}</p>
+          )}
+          {networkFailure && (
+            <p role="alert" className="text-sm text-kurio-coral">
+              Falha de conexão ao enviar o pedido. Tente de novo: ele não será criado duas vezes.
+            </p>
+          )}
+
+          <button disabled={create.isPending || !cart || stale}
+            className="rounded-lg bg-kurio-accent px-4 py-3 font-bold text-kurio-bg transition-colors hover:bg-kurio-primary-light disabled:opacity-50">
+            {create.isPending ? 'Enviando pedido...' : 'Confirmar compra'}
+          </button>
+        </form>
+
+        <section aria-label="Resumo do pedido" className={`order-1 md:order-2 ${card}`}>
+          <h2 className="mb-4 text-lg font-bold text-kurio-text">Resumo</h2>
+          {cart && (
+            <>
+              <ul className="mb-4 flex flex-col gap-2 text-sm">
+                {cart.items.map(({ nft, quantity }) => (
+                  <li key={nft.id} className="flex justify-between gap-2">
+                    <span className="text-kurio-text-secondary">{quantity}× {nft.name}</span>
+                    <span>{nft.price} ETH</span>
+                  </li>
+                ))}
+              </ul>
+              <dl className="grid grid-cols-2 gap-y-1.5 border-t border-kurio-border-soft pt-4 text-sm">
+                <dt className="text-kurio-text-secondary">Subtotal</dt><dd className="text-right">{cart.subtotal} ETH</dd>
+                <dt className="text-kurio-text-secondary">Desconto</dt><dd className="text-right">−{cart.discount} ETH</dd>
+                <dt className="text-kurio-text-secondary">Taxa de rede</dt><dd className="text-right">{cart.networkFee} ETH</dd>
+                <dt className="mt-2 border-t border-kurio-border-soft pt-2 font-bold text-kurio-text">Total</dt>
+                <dd className="mt-2 border-t border-kurio-border-soft pt-2 text-right font-bold text-kurio-text-accent">{cart.total} ETH</dd>
+              </dl>
+            </>
+          )}
+        </section>
+      </div>
     </main>
   )
 }
