@@ -6,17 +6,27 @@ const sorts = ['recent', 'price_asc', 'price_desc'] as const
 const tabs = ['all', 'new', 'trending'] as const
 
 export const Route = createFileRoute('/')({
-  validateSearch: (s: Record<string, unknown>): NftSearch => ({
-    q: typeof s.q === 'string' && s.q ? s.q : undefined,
-    page: Math.max(1, Number(s.page) || 1),
-    sort: (sorts as readonly unknown[]).includes(s.sort) ? (s.sort as NftSearch['sort']) : 'recent',
-    tab: (tabs as readonly unknown[]).includes(s.tab) ? (s.tab as NftSearch['tab']) : 'all',
-  }),
+    validateSearch: (s: Record<string, unknown>): Partial<NftSearch> => {
+    const page = Number(s.page)
+    return {
+      q: typeof s.q === 'string' && s.q ? s.q : undefined,
+      page: Number.isInteger(page) && page > 1 ? page : undefined,
+      sort:
+        (sorts as readonly unknown[]).includes(s.sort) && s.sort !== 'recent'
+          ? (s.sort as NftSearch['sort'])
+          : undefined,
+      tab:
+        (tabs as readonly unknown[]).includes(s.tab) && s.tab !== 'all'
+          ? (s.tab as NftSearch['tab'])
+          : undefined,
+    }
+  },
   component: Home,
 })
 
 function Home() {
-  const search = Route.useSearch()
+  const { q, page = 1, sort = 'recent', tab = 'all' } = Route.useSearch()
+  const search: NftSearch = { q, page, sort, tab }
   const navigate = Route.useNavigate()
 
   const { data, isPending, isError, refetch } = useQuery({
