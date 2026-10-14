@@ -65,7 +65,7 @@ export function CatalogFilters({ search, onChange }: Props) {
       </fieldset>
 
       <div>
-        <h3 className="mb-2 font-bold text-kurio-foreground">Faixa de preço</h3>
+        <h2 className="mb-2 font-bold text-kurio-foreground">Faixa de preço</h2>
         {facets ? (
           <PriceSlider
             bounds={facets.priceBounds}

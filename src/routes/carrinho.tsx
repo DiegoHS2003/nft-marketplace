@@ -101,7 +101,13 @@ function CartPage() {
                   className="flex flex-wrap items-center gap-3 rounded-xl bg-kurio-card p-3 md:flex-nowrap md:gap-4"
                 >
                   <div className="flex basis-full items-center gap-4 md:basis-0 md:flex-1">
-                    <img src={nft.image} alt={nft.name} className="size-16 shrink-0 rounded-lg object-cover" />
+                    <img
+                      src={nft.image}
+                      alt={nft.name}
+                      loading="lazy"
+                      decoding="async"
+                      className="size-16 shrink-0 rounded-lg object-cover"
+                    />
                     <div className="min-w-0">
                       <p className="truncate text-kurio-text">{nft.name}</p>
                       <p className="text-kurio-text-accent md:hidden">{nft.price} ETH</p>

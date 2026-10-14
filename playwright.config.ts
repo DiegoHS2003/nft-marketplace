@@ -4,7 +4,12 @@ export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
   reporter: [['html', { open: 'never' }], ['list']],
-  expect: { timeout: 10_000 },
+  expect: {
+    timeout: 10_000,
+    // regressão visual (tests/e2e/visual.spec.ts): sem animação, sem caret, com pequena tolerância
+    // pra diferenças de antialiasing entre execuções na mesma máquina
+    toHaveScreenshot: { animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.01 },
+  },
   use: {
     baseURL: 'http://localhost:4173',
     browserName: 'chromium',

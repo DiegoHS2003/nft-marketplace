@@ -116,7 +116,13 @@ function OrderPage() {
         <ul className="mt-3 flex flex-col gap-3">
           {order.items.map((i) => (
             <li key={i.nftId} className="flex items-center gap-3">
-              <img src={i.image} alt={i.name} className="size-12 shrink-0 rounded-lg object-cover" />
+              <img
+                src={i.image}
+                alt={i.name}
+                loading="lazy"
+                decoding="async"
+                className="size-12 shrink-0 rounded-lg object-cover"
+              />
               <span className="flex-1 truncate">{i.name}</span>
               <span className="w-16 text-center text-kurio-text-secondary">{i.quantity}×</span>
               <span className="w-20 text-right">{(Number(i.unitPrice) * i.quantity).toFixed(2)} ETH</span>

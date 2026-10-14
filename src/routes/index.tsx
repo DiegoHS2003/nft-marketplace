@@ -178,6 +178,8 @@ function Home() {
                       <img
                         src={nft.image}
                         alt={nft.name}
+                        loading="lazy"
+                        decoding="async"
                         className="aspect-square w-full rounded-md object-cover"
                       />
                       <p className="mt-3 text-sm text-kurio-foreground">{nft.name}</p>

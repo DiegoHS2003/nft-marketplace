@@ -1,0 +1,106 @@
+{
+  "generatedAt": "2026-10-14T19:59:36.931Z",
+  "environment": {
+    "os": "darwin 25.5.0 (arm64)",
+    "node": "v24.19.0",
+    "lighthouse": "13.5.0",
+    "chromeLauncher": "1.2.2",
+    "chrome": "155.0.0.0",
+    "note": "build de produção local via vite preview, MSW ativo"
+  },
+  "thresholds": {
+    "performance": 90,
+    "accessibility": 95,
+    "best-practices": 95,
+    "seo": 90
+  },
+  "runsPerPage": 3,
+  "results": [
+    {
+      "page": "inicio",
+      "label": "Início",
+      "profile": "mobile",
+      "runs": 3,
+      "medians": {
+        "categories": {
+          "performance": 90,
+          "accessibility": 100,
+          "best-practices": 100,
+          "seo": 100
+        },
+        "metrics": {
+          "lcp": 3192.3292,
+          "cls": 0,
+          "tbt": 3.5
+        }
+      }
+    },
+    {
+      "page": "inicio",
+      "label": "Início",
+      "profile": "desktop",
+      "runs": 3,
+      "medians": {
+        "categories": {
+          "performance": 100,
+          "accessibility": 100,
+          "best-practices": 100,
+          "seo": 100
+        },
+        "metrics": {
+          "lcp": 703.53545,
+          "cls": 0.0006979029127630389,
+          "tbt": 0
+        }
+      }
+    },
+    {
+      "page": "detalhe",
+      "label": "Detalhe do NFT #2",
+      "profile": "mobile",
+      "runs": 3,
+      "medians": {
+        "categories": {
+          "performance": 89,
+          "accessibility": 100,
+          "best-practices": 100,
+          "seo": 100
+        },
+        "metrics": {
+          "lcp": 3338.2289000000005,
+          "cls": 0,
+          "tbt": 0
+        }
+      }
+    },
+    {
+      "page": "detalhe",
+      "label": "Detalhe do NFT #2",
+      "profile": "desktop",
+      "runs": 3,
+      "medians": {
+        "categories": {
+          "performance": 99,
+          "accessibility": 100,
+          "best-practices": 100,
+          "seo": 100
+        },
+        "metrics": {
+          "lcp": 746.2094,
+          "cls": 0,
+          "tbt": 0
+        }
+      }
+    }
+  ],
+  "failures": [
+    {
+      "page": "Detalhe do NFT #2",
+      "profile": "mobile",
+      "category": "performance",
+      "score": 89,
+      "threshold": 90,
+      "cause": "LCP ~3.3s (score 0.68/1, peso 25%) e FCP ~2.4s (score 0.69/1, peso 10%) dominam o score. Causas reais, nesta ordem: (1) perfil mobile usa o throttling padrão do Lighthouse (CPU 4x mais lenta, rede equivalente a 4G lento) — condição de laboratório exigida pelo enunciado, não simplificada; (2) é uma SPA sem SSR: o audit lcp-discovery-insight mostra \"Request is discoverable in initial document: false\" — a <img> do NFT só existe no DOM depois do React montar e a query /api/nfts/:id responder, então o navegador não pode descobrir/baixar essa imagem a partir do HTML inicial; (3) src/main.tsx só chama createRoot().render() depois que o MSW (worker.start()) termina de ativar, para garantir que nenhuma chamada real escape sem mock — decisão de arquitetura já registrada no projeto, não alterada aqui; (4) o bundle do MSW (~167 KB gzip) é carregado nesse caminho crítico antes da app montar, por exigência do próprio enunciado de manter os mocks ativos no build de demonstração. Resultado: 89/100, 1 ponto abaixo da meta, estável nas 3 execuções."
+    }
+  ]
+}

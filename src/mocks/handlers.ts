@@ -104,7 +104,7 @@ const scenario = () => localStorage.getItem('kurio:mock-scenario') ?? 'default'
 const slowDelay = () => delay(scenario() === 'slow_network' ? 3000 : 0)
 
 function toOrder(stored: StoredOrder): Order {
-  const { userId, idempotencyKey, payloadHash, confirmAt, outcome, cartLines, ...order } = stored
+  const { userId: _userId, idempotencyKey: _idempotencyKey, payloadHash: _payloadHash, confirmAt: _confirmAt, outcome: _outcome, cartLines: _cartLines, ...order } = stored
   return order
 }
 
@@ -479,7 +479,7 @@ export const handlers = [
     await delay(200)
     const auth = currentUser(request)
     if (!auth) return err(401, 'session_expired', 'Sessão inválida ou expirada')
-    const wallets = db.wallets.filter((w) => w.userId === auth.user.id).map(({ userId, ...w }) => w)
+    const wallets = db.wallets.filter((w) => w.userId === auth.user.id).map(({ userId: _userId, ...w }) => w)
     return HttpResponse.json(wallets)
   }),
 
@@ -514,7 +514,7 @@ export const handlers = [
       networks: body.networks,
     })
     saveWallets()
-    const wallets = db.wallets.filter((w) => w.userId === auth.user.id).map(({ userId, ...w }) => w)
+    const wallets = db.wallets.filter((w) => w.userId === auth.user.id).map(({ userId: _userId, ...w }) => w)
     return HttpResponse.json(wallets, { status: 201 })
   }),
 
@@ -550,7 +550,7 @@ export const handlers = [
     wallet.kind = body.kind
     wallet.networks = body.networks
     saveWallets()
-    const wallets = db.wallets.filter((w) => w.userId === auth.user.id).map(({ userId, ...w }) => w)
+    const wallets = db.wallets.filter((w) => w.userId === auth.user.id).map(({ userId: _userId, ...w }) => w)
     return HttpResponse.json(wallets)
   }),
 

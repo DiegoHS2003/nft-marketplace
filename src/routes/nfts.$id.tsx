@@ -93,6 +93,7 @@ function NftDetail() {
             <img
               src={data.image}
               alt={data.name}
+              fetchPriority="high"
               className="aspect-square w-full rounded-2xl border border-kurio-border object-cover"
             />
             <button

@@ -59,6 +59,7 @@ export function HeroCarousel() {
           key={slide.image}
           src={slide.image}
           alt={slide.alt}
+          fetchPriority="high"
           className="aspect-square w-full max-w-md justify-self-center rounded-2xl object-cover md:justify-self-end"
         />
       </div>
@@ -72,10 +73,15 @@ export function HeroCarousel() {
             aria-selected={i === index}
             aria-label={`Destaque ${i + 1} de ${SLIDES.length}`}
             onClick={() => setIndex(i)}
-            className={`size-2 rounded-full transition-colors motion-reduce:transition-none ${
-              i === index ? 'bg-kurio-primary' : 'bg-kurio-border-soft'
-            }`}
-          />
+            className="flex size-6 items-center justify-center"
+          >
+            <span
+              aria-hidden="true"
+              className={`block size-2 rounded-full transition-colors motion-reduce:transition-none ${
+                i === index ? 'bg-kurio-primary' : 'bg-kurio-border-soft'
+              }`}
+            />
+          </button>
         ))}
       </div>
     </section>

@@ -105,3 +105,36 @@ Os prints indicados no enunciado (`design/perfil-desktop.png` e `design/carteira
 `POST/PATCH /api/wallets[/:id]` — recebem `{ label, address, kind, networks }`; 422 por campo (apelido vazio, endereço inválido, rede vazia) e 409 (`wallet_primary_conflict`) se tentar ter duas carteiras `principal` ao mesmo tempo. Devolvem a lista completa de carteiras do usuário (mesmo formato do `GET`), para o cliente atualizar o cache com `setQueryData` direto, sem round-trip extra — mesmo padrão já usado em `/api/favorites` e `/api/cart/*`.
 
 Carteiras agora persistem em `localStorage` (`kurio:mock-wallets`), igual a NFTs/usuários/favoritos, e são limpas por `resetDb()`/`__kurioMock.reset()`.
+
+## Etapa 6 — Scripts, Lighthouse e regressão visual
+
+Sem desvios do Figma: nada visual mudou nesta etapa.
+
+### Scripts
+
+`typecheck` (`tsc -b --noEmit`) e `lighthouse` (`node lighthouse/run.mjs`) foram adicionados ao `package.json`. O lint continua com `oxlint` (já estava configurado e passando, exit 0); só foram limpos os warnings baratos de `unused-vars` em `src/mocks/handlers.ts` (variáveis de destructuring usadas só pra omitir campos, prefixadas com `_`).
+
+### Lighthouse
+
+Config versionada em `lighthouse/config.mjs`, script em `lighthouse/run.mjs`: builda + `vite preview` na porta 4173 (ou reusa um servidor já no ar), roda Início e Detalhe, em mobile e desktop, 3 execuções cada, calcula mediana de Performance/Accessibility/Best Practices/SEO/LCP/CLS/TBT. Relatórios em `lighthouse/reports/` (`summary.md` tem a tabela e o ambiente).
+
+Correções aplicadas depois da primeira rodada (todas sem mudar comportamento ou visual):
+- `index.html`: `lang="en"` → `lang="pt-BR"` (a UI é em português), `<meta name="description">` e `<title>` ausentes.
+- `public/robots.txt`: não existia; sem ele, o servidor cai no fallback de SPA e devolve `index.html` como `robots.txt`, que é inválido e penalizava SEO.
+- `CatalogFilters.tsx`: heading "Faixa de preço" era `<h3>` sem nenhum `<h2>` antes dele na página (pulava nível) — virou `<h2>`. O Tailwind reseta o tamanho de heading por padrão, então não muda nada visualmente.
+- `HeroCarousel.tsx`: os pontinhos do carrossel (8×8px, do Figma) tinham a área clicável do mesmo tamanho — abaixo dos 24×24px mínimos de acessibilidade. A área de toque virou 24×24px (um `<span>` de 8px centralizado dentro do botão maior e invisível); o ponto visível não muda de tamanho.
+- `fetchPriority="high"` na imagem principal da Início (hero) e do Detalhe — é o elemento de LCP das duas páginas, e o Lighthouse sinalizava que faltava essa dica.
+- `loading="lazy"` nas imagens que não aparecem na primeira dobra (grade do catálogo, itens do carrinho, itens do recibo do pedido).
+
+Resultado final: Accessibility, Best Practices e SEO em 100 nas 4 combinações (página × perfil); Performance 100/99/90 em desktop×2 e início mobile, e **89 no Detalhe do NFT em mobile** (meta: 90), estável nas 3 execuções.
+
+Causa real do 89 (documentada também em `lighthouse/config.mjs`, campo `knownCauses`, e repetida em todo `summary.md` que acusar essa falha): o LCP (~3,3s) e o FCP (~2,4s) dominam o score e têm três causas de arquitetura, não de "imagem grande" ou coisa fácil de trocar:
+1. o perfil mobile do Lighthouse usa throttling padrão (CPU e rede simuladas mais lentas) — é a condição de laboratório pedida pelo enunciado, não foi afrouxada;
+2. é uma SPA sem SSR: a `<img>` do NFT só existe no DOM depois que o React monta e a API mockada responde, então o navegador não consegue descobrir essa imagem a partir do HTML inicial (o próprio Lighthouse marca isso no audit `lcp-discovery-insight`);
+3. `src/main.tsx` só chama `createRoot().render()` depois que o MSW termina de ativar (decisão já tomada em etapas anteriores, pra garantir que nenhuma chamada real escape sem mock) e o bundle do MSW (~167 KB gzip) carrega nesse caminho crítico, porque o enunciado exige mocks ativos no build de demonstração.
+
+Nenhuma dessas três é uma correção "barata": a primeira é a própria regra da auditoria, a segunda exigiria SSR (fora da stack obrigatória do desafio) e a terceira entra em conflito direto com a regra de não deixar nenhuma chamada real escapar sem mock. Por isso ficou documentado como causa real em vez de mascarado.
+
+### Regressão visual
+
+`tests/e2e/visual.spec.ts`: Início, Detalhe, Carrinho e Pagamento, em `desktop` e `mobile` (8 baselines). Determinístico porque cada teste do Playwright já roda num contexto novo (localStorage vazio → mock sempre no cenário semente) e `prefers-reduced-motion` desliga o autoplay do carrossel. Detalhes de como atualizar os baselines estão em `tests/e2e/README.md`.
