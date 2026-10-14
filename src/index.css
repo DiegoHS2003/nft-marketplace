@@ -128,3 +128,19 @@
     @apply font-sans;
     }
 }
+
+@theme {
+  --color-kurio-bg: #140d08;
+  --color-kurio-surface: #221710;
+  --color-kurio-border: #3a2a1d;
+  --color-kurio-accent: #d4924f;
+  --color-kurio-text: #f3e9dc;
+  --color-kurio-muted: #a8957f;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+}
+
+body {
+  background-color: var(--color-kurio-bg);
+  color: var(--color-kurio-text);
+  font-family: var(--font-mono);
+}
