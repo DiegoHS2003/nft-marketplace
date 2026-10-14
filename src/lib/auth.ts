@@ -13,7 +13,7 @@ export const sessionQueryOptions = queryOptions<User | null>({
 })
 
 function clearPrivateCache(qc: QueryClient) {
-  qc.removeQueries({ predicate: (q) => !PUBLIC_KEYS.includes(q.queryKey[0] as string) })
+  qc.resetQueries({ predicate: (q) => !PUBLIC_KEYS.includes(q.queryKey[0] as string) })
 }
 
 export function startSession(qc: QueryClient, { token, user }: { token: string; user: User }) {

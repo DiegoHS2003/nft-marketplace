@@ -5,6 +5,7 @@ import { isAxiosError } from 'axios'
 import { login } from '@/api/auth'
 import { startSession } from '@/lib/auth'
 import type { ApiError } from '@/types/api'
+import { mergeGuestCart } from '@/api/cart'
 
 export const Route = createFileRoute('/login')({
   validateSearch: (s: Record<string, unknown>): { redirect?: string } => ({
@@ -25,10 +26,12 @@ function Login() {
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const mutation = useMutation({
+    const mutation = useMutation({
     mutationFn: login,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       startSession(qc, data)
+      await mergeGuestCart().catch(() => undefined) // junta o carrinho do visitante com o da conta
+      await qc.invalidateQueries({ queryKey: ['cart'] })
       router.history.push(redirect ?? '/')
     },
   })

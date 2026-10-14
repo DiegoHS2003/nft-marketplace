@@ -2,6 +2,8 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { fetchNft } from '@/api/nfts'
+import { useAddToCart } from '@/api/cart'
+import type { ApiError } from '@/types/api'
 
 export const Route = createFileRoute('/nfts/$id')({ component: NftDetail })
 
@@ -14,6 +16,8 @@ function NftDetail() {
     // 404 não adianta tentar de novo
     retry: (count, err) => !(isAxiosError(err) && err.response?.status === 404) && count < 1,
   })
+
+  const add = useAddToCart()
 
   const notFound = isError && isAxiosError(error) && error.response?.status === 404
 
@@ -48,12 +52,23 @@ function NftDetail() {
                 ? `${data.editionsAvailable} de ${data.editionsTotal} edições disponíveis`
                 : 'Edição esgotada'}
             </p>
-            <button
-              disabled={data.editionsAvailable === 0}
+                        <button
+              disabled={data.editionsAvailable === 0 || add.isPending}
+              onClick={() => add.mutate({ nftId: data.id, quantity: 1 })}
               className="mt-6 rounded bg-kurio-accent px-4 py-2 text-kurio-bg disabled:opacity-50"
             >
-              Adicionar ao carrinho
+              {add.isPending ? 'Adicionando...' : 'Adicionar ao carrinho'}
             </button>
+            {add.isSuccess && (
+              <p role="status" className="mt-2">
+                Adicionado. <Link to="/carrinho" className="underline">Ver carrinho</Link>
+              </p>
+            )}
+            {add.isError && (
+              <p role="alert" className="mt-2">
+                {isAxiosError<ApiError>(add.error) ? add.error.response?.data?.message : 'Não foi possível adicionar.'}
+              </p>
+            )}
           </div>
         </section>
       )}

@@ -38,3 +38,17 @@ export interface ApiError {
   message: string
   fields?: Record<string, string>
 }
+
+export interface CartLine {
+  nft: Nft
+  quantity: number
+}
+
+export interface Cart {
+  items: CartLine[]
+  coupon: string | null
+  subtotal: string
+  discount: string
+  networkFee: string
+  total: string
+}

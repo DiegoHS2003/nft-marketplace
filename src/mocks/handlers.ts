@@ -1,6 +1,6 @@
 import { http, HttpResponse, delay } from 'msw'
 import type { ApiError, NftListResponse } from '@/types/api'
-import { db, ready, saveSessions, sha256 } from './db'
+import { db, ready, saveCarts, saveSessions, sha256 } from './db'
 
 const err = (status: number, code: string, message: string, fields?: Record<string, string>) =>
   HttpResponse.json<ApiError>({ code, message, fields }, { status })
@@ -20,6 +20,43 @@ function currentUser(request: Request) {
 }
 
 const publicUser = ({ id, name, email }: { id: string; name: string; email: string }) => ({ id, name, email })
+
+const formatUnits = (v: bigint) => {
+  const s = v.toString().padStart(19, '0')
+  const int = s.slice(0, -18)
+  const frac = s.slice(-18).replace(/0+$/, '')
+  return frac ? `${int}.${frac}` : int
+}
+
+function cartKey(request: Request) {
+  const auth = currentUser(request)
+  if (auth) return `u:${auth.user.id}`
+  const guest = request.headers.get('X-Guest-Id')
+  return guest ? `g:${guest}` : null
+}
+
+const getRawCart = (key: string) => db.carts.get(key) ?? { items: [], coupon: null }
+
+function buildCart(key: string) {
+  const raw = getRawCart(key)
+  const items = raw.items.flatMap((i) => {
+    const nft = db.nfts.find((n) => n.id === i.nftId)
+    return nft ? [{ nft, quantity: i.quantity }] : []
+  })
+  const subtotal = items.reduce((sum, i) => sum + toUnits(i.nft.price) * BigInt(i.quantity), 0n)
+  const discount = raw.coupon ? (subtotal * 10n) / 100n : 0n
+  const networkFee = items.length ? toUnits('0.002') : 0n
+  return {
+    items,
+    coupon: raw.coupon,
+    subtotal: formatUnits(subtotal),
+    discount: formatUnits(discount),
+    networkFee: formatUnits(networkFee),
+    total: formatUnits(subtotal - discount + networkFee),
+  }
+}
+
+const noIdentity = () => err(400, 'missing_identity', 'Identificação do carrinho ausente')
 
 export const handlers = [
   http.post('/api/auth/login', async ({ request }) => {
@@ -125,5 +162,121 @@ export const handlers = [
     await delay(300)
     const nft = db.nfts.find((n) => n.id === params.id)
     return nft ? HttpResponse.json(nft) : err(404, 'not_found', 'NFT não encontrado')
+  }),
+    http.get('/api/cart', async ({ request }) => {
+    await ready
+    await delay(200)
+    const key = cartKey(request)
+    if (!key) return noIdentity()
+    return HttpResponse.json(buildCart(key))
+  }),
+
+  http.post('/api/cart/items', async ({ request }) => {
+    await ready
+    await delay(200)
+    const key = cartKey(request)
+    if (!key) return noIdentity()
+    const { nftId, quantity } = (await request.json()) as { nftId: string; quantity: number }
+    const nft = db.nfts.find((n) => n.id === nftId)
+    if (!nft) return err(404, 'not_found', 'NFT não encontrado')
+    if (!Number.isInteger(quantity) || quantity < 1) return err(422, 'validation_error', 'Quantidade inválida')
+    const cart = getRawCart(key)
+    const line = cart.items.find((i) => i.nftId === nftId)
+    const next = (line?.quantity ?? 0) + quantity
+    if (next > nft.editionsAvailable) {
+      return err(409, 'stock_conflict', nft.editionsAvailable === 0 ? 'Edição esgotada' : `Só restam ${nft.editionsAvailable} edições`)
+    }
+    if (line) line.quantity = next
+    else cart.items.push({ nftId, quantity })
+    db.carts.set(key, cart)
+    saveCarts()
+    return HttpResponse.json(buildCart(key), { status: 201 })
+  }),
+
+  http.patch('/api/cart/items/:nftId', async ({ request, params }) => {
+    await ready
+    await delay(300)
+    const key = cartKey(request)
+    if (!key) return noIdentity()
+    const { quantity } = (await request.json()) as { quantity: number }
+    const nft = db.nfts.find((n) => n.id === params.nftId)
+    const cart = getRawCart(key)
+    const line = cart.items.find((i) => i.nftId === params.nftId)
+    if (!nft || !line) return err(404, 'not_found', 'Item não está no carrinho')
+    if (!Number.isInteger(quantity) || quantity < 1) return err(422, 'validation_error', 'Quantidade inválida')
+    if (quantity > nft.editionsAvailable) {
+      return err(409, 'stock_conflict', `Só restam ${nft.editionsAvailable} edições`)
+    }
+    line.quantity = quantity
+    db.carts.set(key, cart)
+    saveCarts()
+    return HttpResponse.json(buildCart(key))
+  }),
+
+  http.delete('/api/cart/items/:nftId', async ({ request, params }) => {
+    await ready
+    await delay(200)
+    const key = cartKey(request)
+    if (!key) return noIdentity()
+    const cart = getRawCart(key)
+    cart.items = cart.items.filter((i) => i.nftId !== params.nftId)
+    db.carts.set(key, cart)
+    saveCarts()
+    return HttpResponse.json(buildCart(key))
+  }),
+
+  http.post('/api/cart/coupon', async ({ request }) => {
+    await ready
+    await delay(300)
+    const key = cartKey(request)
+    if (!key) return noIdentity()
+    const { code } = (await request.json()) as { code: string }
+    const normalized = (code ?? '').trim().toUpperCase()
+    if (normalized === 'EXPIRADO') return err(410, 'coupon_expired', 'Este cupom expirou')
+    if (normalized !== 'KURIO10') return err(422, 'coupon_invalid', 'Cupom inválido')
+    const cart = getRawCart(key)
+    cart.coupon = normalized
+    db.carts.set(key, cart)
+    saveCarts()
+    return HttpResponse.json(buildCart(key))
+  }),
+
+  http.delete('/api/cart/coupon', async ({ request }) => {
+    await ready
+    await delay(200)
+    const key = cartKey(request)
+    if (!key) return noIdentity()
+    const cart = getRawCart(key)
+    cart.coupon = null
+    db.carts.set(key, cart)
+    saveCarts()
+    return HttpResponse.json(buildCart(key))
+  }),
+
+  http.post('/api/cart/merge', async ({ request }) => {
+    await ready
+    await delay(200)
+    const auth = currentUser(request)
+    if (!auth) return err(401, 'session_expired', 'Sessão inválida ou expirada')
+    const { guestId } = (await request.json()) as { guestId: string }
+    const guestKey = `g:${guestId}`
+    const userKey = `u:${auth.user.id}`
+    const guest = db.carts.get(guestKey)
+    if (guest) {
+      const target = getRawCart(userKey)
+      for (const g of guest.items) {
+        const nft = db.nfts.find((n) => n.id === g.nftId)
+        if (!nft) continue
+        const line = target.items.find((i) => i.nftId === g.nftId)
+        const qty = Math.min((line?.quantity ?? 0) + g.quantity, nft.editionsAvailable)
+        if (qty < 1) continue
+        if (line) line.quantity = qty
+        else target.items.push({ nftId: g.nftId, quantity: qty })
+      }
+      db.carts.set(userKey, target)
+      db.carts.delete(guestKey)
+      saveCarts()
+    }
+    return HttpResponse.json(buildCart(userKey))
   }),
 ]
