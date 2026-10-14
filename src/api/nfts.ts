@@ -6,10 +6,18 @@ export interface NftSearch {
   page: number
   sort: 'recent' | 'price_asc' | 'price_desc'
   tab: 'all' | 'new' | 'trending'
+  collection?: string[]
+  network?: string[]
+  minPrice?: string
+  maxPrice?: string
 }
 
 export async function fetchNfts(search: NftSearch, signal?: AbortSignal) {
-  const { data } = await api.get<NftListResponse>('/nfts', { params: search, signal })
+  const { data } = await api.get<NftListResponse>('/nfts', {
+    params: search,
+    paramsSerializer: { indexes: null }, // listas viram collection=a&collection=b
+    signal,
+  })
   return data
 }
 

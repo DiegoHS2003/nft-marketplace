@@ -2,7 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
-import '@fontsource-variable/jetbrains-mono'
+import '@fontsource-variable/roboto-mono'
 import './index.css'
 import { routeTree } from './routeTree.gen'
 

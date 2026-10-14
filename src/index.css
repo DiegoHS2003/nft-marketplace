@@ -130,17 +130,38 @@
 }
 
 @theme {
-  --color-kurio-bg: #140d08;
-  --color-kurio-surface: #221710;
-  --color-kurio-border: #3a2a1d;
-  --color-kurio-accent: #d4924f;
-  --color-kurio-text: #f3e9dc;
-  --color-kurio-muted: #a8957f;
-  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+  --font-mono: "Roboto Mono Variable", ui-monospace, monospace;
+
+  --color-kurio-primary: #d28a4c;
+  --color-kurio-primary-light: #dd9a5f;
+  --color-kurio-primary-dark: #c47b3e;
+  --color-kurio-amber: #e3a44e;
+  --color-kurio-coral: #f0805f;
+  --color-kurio-secondary: #b39463;
+  --color-kurio-muted: #b0916a;
+  --color-kurio-text: #f7f3ec;
+  --color-kurio-text-secondary: #cfb28c;
+  --color-kurio-text-accent: #e89b55;
+  --color-kurio-foreground: #f5f1eb;
+  --color-kurio-card: #241612;
+  --color-kurio-raised: #2f1d15;
+  --color-kurio-dark: #38220f;
+  --color-kurio-ink: #140d0a;
+  --color-kurio-ink-deep: #0e0907;
+  --color-kurio-ink-soft: #1c110c;
+  --color-kurio-border: #3f2319;
+  --color-kurio-border-soft: #55321f;
+  --color-kurio-success: #00a66c;
+  --color-kurio-error: #ed1b2e;
+
+  /* nomes que o código já usa */
+  --color-kurio-bg: #140d0a;
+  --color-kurio-surface: #241612;
+  --color-kurio-accent: #d28a4c;
 }
 
 body {
-  background-color: var(--color-kurio-bg);
+  background-color: var(--color-kurio-ink);
   color: var(--color-kurio-text);
   font-family: var(--font-mono);
 }
