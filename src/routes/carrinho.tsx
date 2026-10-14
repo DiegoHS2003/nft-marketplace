@@ -4,6 +4,7 @@ import { isAxiosError } from 'axios'
 import {
   useApplyCoupon, useCart, useRemoveCoupon, useRemoveItem, useUpdateQuantity,
 } from '@/api/cart'
+import { Skeleton } from '@/components/Skeleton'
 import type { ApiError } from '@/types/api'
 
 export const Route = createFileRoute('/carrinho')({ component: CartPage })
@@ -20,10 +21,38 @@ function CartPage() {
   const [code, setCode] = useState('')
 
   return (
-    <main className="mx-auto max-w-3xl p-6">
+    <main className="mx-auto max-w-3xl p-6" aria-busy={isPending}>
       <h1 className="mb-4 text-2xl">Carrinho</h1>
 
-      {isPending && <p>Carregando...</p>}
+      <p role="status" aria-live="polite" className="sr-only">
+        {isPending ? 'Carregando carrinho...' : cart ? 'Carrinho carregado' : ''}
+      </p>
+
+      {isPending && (
+        <div aria-hidden="true" data-testid="carrinho-skeleton">
+          <ul className="flex flex-col gap-3">
+            {Array.from({ length: 2 }, (_, i) => (
+              <li key={i} className="flex items-center gap-4 rounded bg-kurio-surface p-3">
+                <Skeleton className="size-16 shrink-0" />
+                <div className="flex-1">
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="mt-2 h-4 w-1/4" />
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-6 grid grid-cols-2 gap-2">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-16 justify-self-end" />
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-16 justify-self-end" />
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-16 justify-self-end" />
+            <Skeleton className="h-5 w-16" />
+            <Skeleton className="h-5 w-20 justify-self-end" />
+          </div>
+        </div>
+      )}
       {isError && (
         <div role="alert">
           <p>Não foi possível carregar o carrinho.</p>

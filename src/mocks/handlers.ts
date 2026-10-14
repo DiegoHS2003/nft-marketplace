@@ -66,6 +66,9 @@ const noIdentity = () => err(400, 'missing_identity', 'Identificação do carrin
 
 const scenario = () => localStorage.getItem('kurio:mock-scenario') ?? 'default'
 
+// atraso extra pra testar skeletons: liga com window.__kurioMock.setScenario('slow_network')
+const slowDelay = () => delay(scenario() === 'slow_network' ? 3000 : 0)
+
 function toOrder(stored: StoredOrder): Order {
   const { userId, idempotencyKey, payloadHash, confirmAt, outcome, cartLines, ...order } = stored
   return order
@@ -172,6 +175,7 @@ export const handlers = [
   http.get('/api/nfts', async ({ request }) => {
     await ready
     await delay(300)
+    await slowDelay()
     const p = new URL(request.url).searchParams
     const q = (p.get('q') ?? '').trim().toLowerCase()
     const collections = p.getAll('collection')
@@ -256,12 +260,14 @@ export const handlers = [
   http.get('/api/nfts/:id', async ({ params }) => {
     await ready
     await delay(300)
+    await slowDelay()
     const nft = db.nfts.find((n) => n.id === params.id)
     return nft ? HttpResponse.json(nft) : err(404, 'not_found', 'NFT não encontrado')
   }),
     http.get('/api/cart', async ({ request }) => {
     await ready
     await delay(200)
+    await slowDelay()
     const key = cartKey(request)
     if (!key) return noIdentity()
     return HttpResponse.json(buildCart(key))

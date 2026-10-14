@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { fetchNft } from '@/api/nfts'
 import { useAddToCart } from '@/api/cart'
+import { Skeleton } from '@/components/Skeleton'
 import type { ApiError } from '@/types/api'
 
 export const Route = createFileRoute('/nfts/$id')({ component: NftDetail })
@@ -22,10 +23,25 @@ function NftDetail() {
   const notFound = isError && isAxiosError(error) && error.response?.status === 404
 
   return (
-    <main className="mx-auto max-w-3xl p-6">
+    <main className="mx-auto max-w-3xl p-6" aria-busy={isPending}>
       <Link to="/" className="text-kurio-muted underline">← Voltar ao catálogo</Link>
 
-      {isPending && <p className="mt-6">Carregando...</p>}
+      <p role="status" aria-live="polite" className="sr-only">
+        {isPending ? 'Carregando NFT...' : data ? `${data.name} carregado` : ''}
+      </p>
+
+      {isPending && (
+        <section aria-hidden="true" data-testid="nft-skeleton" className="mt-6 grid gap-6 md:grid-cols-2">
+          <Skeleton className="aspect-square w-full rounded" />
+          <div>
+            <Skeleton className="h-7 w-2/3" />
+            <Skeleton className="mt-2 h-4 w-1/3" />
+            <Skeleton className="mt-4 h-9 w-1/4" />
+            <Skeleton className="mt-2 h-4 w-1/2" />
+            <Skeleton className="mt-6 h-10 w-48" />
+          </div>
+        </section>
+      )}
 
       {notFound && (
         <div role="alert" className="mt-6">

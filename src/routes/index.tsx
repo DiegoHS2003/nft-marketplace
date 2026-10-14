@@ -5,6 +5,7 @@ import { Search, SlidersHorizontal } from 'lucide-react'
 import { fetchNfts, type NftSearch } from '@/api/nfts'
 import { CatalogFilters } from '@/components/CatalogFilters'
 import { HeroCarousel } from '@/components/HeroCarousel'
+import { Skeleton } from '@/components/Skeleton'
 
 const SORTS = ['recent', 'price_asc', 'price_desc'] as const
 const TABS = [
@@ -112,7 +113,11 @@ function Home() {
           </div>
         </aside>
 
-        <section id="catalogo" aria-label="Catálogo">
+        <section id="catalogo" aria-label="Catálogo" aria-busy={isPending}>
+          <p role="status" aria-live="polite" className="sr-only">
+            {isPending ? 'Carregando NFTs...' : data ? `${data.total} NFTs encontrados` : ''}
+          </p>
+
           <div className="mb-5 flex flex-wrap items-center gap-x-5 gap-y-3 text-sm">
             {TABS.map(([value, label]) => (
               <button
@@ -143,7 +148,17 @@ function Home() {
             </div>
           </div>
 
-          {isPending && <p>Carregando...</p>}
+          {isPending && (
+            <ul aria-hidden="true" data-testid="catalogo-skeleton" className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+              {Array.from({ length: 9 }, (_, i) => (
+                <li key={i} className="rounded-lg bg-kurio-card p-3">
+                  <Skeleton className="aspect-square w-full" />
+                  <Skeleton className="mt-3 h-4 w-3/4" />
+                  <Skeleton className="mt-2 h-4 w-1/3" />
+                </li>
+              ))}
+            </ul>
+          )}
 
           {isError && (
             <div role="alert">
